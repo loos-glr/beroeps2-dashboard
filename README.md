@@ -20,6 +20,7 @@ js/               ES-modules, zie hieronder
 | --- | --- |
 | `js/main.js` | Bootstrap, gedelegeerde events (`data-action`), laadlogica |
 | `js/state.js` | Gedeelde app-state + render/reload-hooks |
+| `js/cache.js` | Tweelaagse cache: teamdata met TTL + ETag/body per API-URL |
 | `js/storage.js` | localStorage-sleutels, token en docentnaam |
 | `js/utils.js` | Pure helpers: escaping, datums, iconen, templatefragmenten |
 | `js/teams.js` | Teams beheren, teamnaam-modal, JSON import/export |
@@ -54,6 +55,19 @@ npx serve .
 2. Open het dashboard → **Token** → plak het token en eventueel je eigen
    GitHub-gebruikersnaam (die wordt uit de lijst gefilterd).
 3. Het token wordt alleen in `localStorage` van jouw browser bewaard.
+
+## Caching
+
+- **Laag 1:** de ruwe teamdata wordt per repo in `localStorage` bewaard en
+  gebruikt zolang die jonger is dan de TTL (keuzelijst in de toolbar,
+  standaard 10 min, `0` = altijd live). Studentnamen en samengevoegde accounts
+  worden altijd opnieuw toegepast, dus wijzigingen zijn direct zichtbaar.
+- **Laag 2:** verlopen of geforceerde loads sturen `If-None-Match` mee. Een
+  `304 Not Modified` telt niet mee voor de GitHub rate limit.
+- **Data verversen** forceert een controle bij GitHub voor alle teams; het
+  verversicoon op een teamkaart doet dat voor één team. **Cache legen** wist
+  alles. Bij het wissen van het token wordt de cache ook geleegd.
+- Bij een vol opslagquotum worden automatisch de oudste cache-entries opgeruimd.
 
 ## Deploy
 

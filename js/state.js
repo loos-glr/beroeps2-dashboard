@@ -18,10 +18,15 @@ export const state = {
   /** { repo, username } van de geopende studentdetailpagina. */
   activeStudentDetail: null,
 
+  /** True tijdens een volledige laadactie van alle teams. */
+  loading: false,
+  /** Repo's (lowercase) waarvan op dit moment alleen dat team wordt ververst. */
+  refreshingRepos: new Set(),
+
   /** Door main.js geregistreerd: dashboard + open detailmodal opnieuw renderen. */
   rerender: () => {},
-  /** Door main.js geregistreerd: alle teams opnieuw ophalen via de GitHub API. */
-  reload: () => {}
+  /** Door main.js geregistreerd: alle teams laden; `force` slaat de TTL-cache over (ETag-revalidatie). */
+  reload: (force = false) => {}
 };
 
 /** Zoek de opgehaalde teamdata die bij een repo hoort. */

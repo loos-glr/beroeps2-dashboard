@@ -59,6 +59,13 @@ export function formatDateTime(dateString) {
   return new Date(dateString).toLocaleString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
+export function formatAge(ms) {
+  const minutes = Math.floor(ms / 60000);
+  if (minutes < 1) return 'zojuist';
+  if (minutes < 60) return `${minutes} min geleden`;
+  return `${Math.floor(minutes / 60)} u geleden`;
+}
+
 /* ===== Herbruikbare template-fragmenten ===== */
 export function formatHandles(handles) {
   return handles.map(h => `@${esc(h)}`).join(' + ');

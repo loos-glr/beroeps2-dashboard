@@ -4,6 +4,7 @@ import { setModal, isOpen } from './utils.js';
 import { renderConfiguredTeamsList, closeTeamNameModal } from './teams.js';
 import { renderConfiguredAliasesList, closeAliasModal } from './aliases.js';
 import { closeStudentDetailModal } from './detail.js';
+import { clearAllCaches } from './cache.js';
 
 /**
  * ============================================================================
@@ -25,16 +26,18 @@ export function saveTokenAndTeacher() {
   setOrRemoveStored(STORAGE_KEYS.TOKEN, document.getElementById('tokenInput').value.trim());
   setOrRemoveStored(STORAGE_KEYS.TEACHER, document.getElementById('teacherUsernameInput').value.trim());
   toggleTokenModal();
-  state.reload();
+  state.reload(true);
 }
 
 export function clearToken() {
   localStorage.removeItem(STORAGE_KEYS.TOKEN);
   localStorage.removeItem(STORAGE_KEYS.TEACHER);
+  // Gecachte data kan met het token (bijv. uit privé-repo's) zijn opgehaald
+  clearAllCaches();
   document.getElementById('tokenInput').value = '';
   document.getElementById('teacherUsernameInput').value = '';
   toggleTokenModal();
-  state.reload();
+  state.reload(true);
 }
 
 export function toggleTeamsModal() {

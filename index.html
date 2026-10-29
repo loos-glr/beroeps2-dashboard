@@ -23,8 +23,8 @@
         </div>
       </div>
       <div class="actions">
-        <button id="refreshBtn" type="button" data-action="refresh" class="btn btn-primary">
-          <svg class="i"><use href="assets/icons.svg#i-refresh"/></svg>Verversen
+        <button id="refreshBtn" type="button" data-action="refresh" class="btn btn-primary" title="Controleert bij GitHub op wijzigingen (ETag-revalidatie; 304-antwoorden tellen niet mee voor de rate limit)">
+          <svg class="i"><use href="assets/icons.svg#i-refresh"/></svg>Data verversen
         </button>
         <button type="button" data-action="toggle-teams-modal" class="btn">
           <svg class="i"><use href="assets/icons.svg#i-users"/></svg>Teams &amp; Namen
@@ -41,6 +41,7 @@
     <div class="toolbar">
       <div class="meta">
         <span id="rateLimitStatus"><svg class="i"><use href="assets/icons.svg#i-pulse"/></svg>API: …</span>
+        <span id="cacheStatus"><svg class="i"><use href="assets/icons.svg#i-shield"/></svg>Cache: –</span>
         <span id="lastUpdated">Update: –</span>
         <span id="teamCountBadge">0 teams</span>
       </div>
@@ -49,6 +50,17 @@
         <span class="track" aria-hidden="true"></span>
         <span>Alleen aandacht</span>
       </label>
+      <div class="field">
+        <label for="cacheTtl">Cache</label>
+        <select id="cacheTtl">
+          <option value="0">0 (Altijd live)</option>
+          <option value="5">5 min</option>
+          <option value="10" selected>10 min</option>
+          <option value="30">30 min</option>
+          <option value="60">60 min</option>
+        </select>
+        <button type="button" data-action="clear-cache" class="btn btn-ghost btn-sm" title="Wist alle lokaal opgeslagen teamdata en ETags en haalt alles opnieuw op">Cache legen</button>
+      </div>
       <div class="field">
         <label for="inactivityThreshold">Inactief na</label>
         <input id="inactivityThreshold" type="number" value="7" min="1" max="60">

@@ -1,4 +1,5 @@
 import { getToken, getTeacherUsername } from './storage.js';
+import { readEtagEntry, writeEtagEntry } from './cache.js';
 import { esc, icon } from './utils.js';
 import { addTeamIfNew, findStoredTeam, getStoredTeams } from './teams.js';
 import {
@@ -39,29 +40,90 @@ export async function checkRateLimit() {
   }
 }
 
+/**
+ * Laag 2: conditionele GitHub-request. Bewaart per URL de laatste ETag + body
+ * en stuurt die als `If-None-Match` mee. Een 304 telt niet mee voor de rate limit.
+ * `slim` kan de body verkleinen vóór het opslaan (bespaart opslagruimte).
+ * Retourneert { ok, status, data, notModified }.
+ */
+export async function cachedGithubFetch(url, options = {}) {
+  const { slim, headers: extraHeaders, ...fetchOptions } = options;
+  const headers = { ...getHeaders(), ...extraHeaders };
+  const entry = readEtagEntry(url);
+  if (entry?.etag) headers['If-None-Match'] = entry.etag;
+
+  const res = await fetch(url, { ...fetchOptions, headers });
+
+  if (res.status === 304 && entry) {
+    return { ok: true, status: 304, data: entry.body, notModified: true };
+  }
+  if (!res.ok) {
+    return { ok: false, status: res.status, data: null, notModified: false };
+  }
+
+  const raw = await res.json();
+  const data = slim && Array.isArray(raw) ? raw.map(slim) : raw;
+  const etag = res.headers.get('ETag');
+  if (etag) writeEtagEntry(url, etag, data);
+  return { ok: true, status: res.status, data, notModified: false };
+}
+
+// Houdt de originele veldnamen, zodat de to*Summary-functies ongewijzigd werken
+const pickUser = u => (u ? { login: u.login, avatar_url: u.avatar_url } : u);
+const slimCommit = c => ({
+  sha: c.sha,
+  html_url: c.html_url,
+  author: pickUser(c.author),
+  commit: c.commit && { message: c.commit.message, author: c.commit.author && { name: c.commit.author.name, date: c.commit.author.date } }
+});
+const slimPr = pr => ({
+  number: pr.number, title: pr.title, state: pr.state, merged_at: pr.merged_at,
+  created_at: pr.created_at, updated_at: pr.updated_at, html_url: pr.html_url,
+  user: pickUser(pr.user), head: { ref: pr.head?.ref }, base: { ref: pr.base?.ref }
+});
+const slimIssue = i => ({
+  number: i.number, title: i.title, state: i.state, created_at: i.created_at,
+  updated_at: i.updated_at, closed_at: i.closed_at, html_url: i.html_url,
+  labels: Array.isArray(i.labels) ? i.labels.map(l => (typeof l === 'string' ? l : l.name)).filter(Boolean) : [],
+  user: pickUser(i.user), assignee: pickUser(i.assignee),
+  assignees: Array.isArray(i.assignees) ? i.assignees.map(pickUser) : [],
+  pull_request: i.pull_request ? {} : undefined
+});
+
+const TEAM_ENDPOINTS = [
+  { path: 'commits?per_page=100', slim: slimCommit },
+  { path: 'pulls?state=all&per_page=100', slim: slimPr },
+  { path: 'issues?state=all&per_page=100', slim: slimIssue },
+  { path: 'branches?per_page=100', slim: b => ({ name: b.name }) },
+  { path: 'collaborators', slim: pickUser }
+];
+
+/** Aantal GitHub-requests dat één volledige teamload kost. */
+export const REQUESTS_PER_TEAM = TEAM_ENDPOINTS.length;
+
+/** Retourneert { data, requests: { made, notModified } }. */
 export async function fetchTeamData(team) {
-  const headers = getHeaders();
   const baseUrl = `https://api.github.com/repos/${team.repo}`;
   const teacherUsername = getTeacherUsername();
 
   // Haal commits, PR's, issues, branches én (indien token aanwezig) collaborators parallel op
-  const [commitsRes, prsRes, issuesRes, branchesRes, collabRes] = await Promise.all([
-    fetch(`${baseUrl}/commits?per_page=100`, { headers }),
-    fetch(`${baseUrl}/pulls?state=all&per_page=100`, { headers }),
-    fetch(`${baseUrl}/issues?state=all&per_page=100`, { headers }),
-    fetch(`${baseUrl}/branches?per_page=100`, { headers }),
-    fetch(`${baseUrl}/collaborators`, { headers })
-  ]);
+  const [commitsRes, prsRes, issuesRes, branchesRes, collabRes] = await Promise.all(
+    TEAM_ENDPOINTS.map(e => cachedGithubFetch(`${baseUrl}/${e.path}`, { slim: e.slim }))
+  );
+  const requests = {
+    made: REQUESTS_PER_TEAM,
+    notModified: [commitsRes, prsRes, issuesRes, branchesRes, collabRes].filter(r => r.notModified).length
+  };
 
   if (!commitsRes.ok) {
     throw new Error(`Kan ${team.repo} niet ophalen (status ${commitsRes.status})`);
   }
 
-  const commits = await commitsRes.json();
-  const prs = prsRes.ok ? await prsRes.json() : [];
-  const rawIssues = issuesRes.ok ? await issuesRes.json() : [];
-  const branches = branchesRes.ok ? await branchesRes.json() : [];
-  const collaborators = collabRes.ok ? await collabRes.json() : [];
+  const commits = commitsRes.data;
+  const prs = prsRes.ok ? prsRes.data : [];
+  const rawIssues = issuesRes.ok ? issuesRes.data : [];
+  const branches = branchesRes.ok ? branchesRes.data : [];
+  const collaborators = collabRes.ok ? collabRes.data : [];
 
   // GitHub's /issues endpoint levert ook Pull Requests terug (herkenbaar aan .pull_request)
   const pureIssues = Array.isArray(rawIssues)
@@ -118,15 +180,18 @@ export async function fetchTeamData(team) {
 
   const rawMembers = Object.values(membersMap);
   return {
-    teamName: team.name,
-    repo: team.repo,
-    collaboratorsDetected: collabRes.ok,
-    totalPRs: prs.length,
-    totalIssues: pureIssues.length,
-    openIssues: pureIssues.filter(i => i.state === 'open').length,
-    totalBranches: branches.length,
-    rawMembers,
-    members: mergeRawTeamMembers(rawMembers)
+    data: {
+      teamName: team.name,
+      repo: team.repo,
+      collaboratorsDetected: collabRes.ok,
+      totalPRs: prs.length,
+      totalIssues: pureIssues.length,
+      openIssues: pureIssues.filter(i => i.state === 'open').length,
+      totalBranches: branches.length,
+      rawMembers,
+      members: mergeRawTeamMembers(rawMembers)
+    },
+    requests
   };
 }
 

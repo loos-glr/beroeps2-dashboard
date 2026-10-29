@@ -8,7 +8,11 @@ export const STORAGE_KEYS = {
   TEAMS: 'glr_beroeps2_teams_v1',
   ALIASES: 'glr_beroeps2_student_aliases_v1',
   TOKEN: 'glr_gh_token',
-  TEACHER: 'glr_gh_teacher_username'
+  TEACHER: 'glr_gh_teacher_username',
+  TEAM_CACHE: 'glr_beroeps2_team_cache_v1',
+  CACHE_TTL: 'glr_beroeps2_cache_ttl_min',
+  /** Prefix: per GitHub API-URL één key met { etag, body, storedAt }. */
+  ETAG_PREFIX: 'glr_beroeps2_etag_v1:'
 };
 
 export function readJson(key, fallback) {

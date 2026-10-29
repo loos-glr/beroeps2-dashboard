@@ -97,6 +97,11 @@ svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none;
   background: var(--surface); border: 1px solid var(--border-strong); border-radius: 6px;
   font-family: var(--mono); font-size: 13px;
 }
+.field select {
+  min-height: 30px; padding: 0 8px;
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: 6px;
+  font-family: var(--mono); font-size: 13px;
+}
 .switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
 .switch input { position: absolute; opacity: 0; }
 .switch .track { width: 32px; height: 18px; border-radius: 999px; background: var(--border-strong); position: relative; transition: background-color .15s ease; }
@@ -195,6 +200,9 @@ tbody tr:hover { background: var(--surface-2); }
   opacity: .65; transition: opacity .15s ease, background-color .15s ease, color .15s ease;
 }
 tbody tr:hover .edit-alias-btn, .edit-alias-btn:focus-visible { opacity: 1; }
+.edit-alias-btn:disabled { opacity: .35; cursor: default; }
+.card-refresh-btn.spin svg { animation: spin .8s linear infinite; }
+.cache-badge { margin-left: 8px; vertical-align: middle; }
 .edit-alias-btn:hover { background: var(--border); color: var(--text); }
 .edit-alias-btn svg.i { width: 13px; height: 13px; }
 td.num .v { font-family: var(--mono); font-size: 13px; }
