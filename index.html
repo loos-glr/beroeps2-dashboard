@@ -1,0 +1,1973 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <title>BEROEPS2 - GitHub Flow Formatief Dashboard | GLR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Fira+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ===== Design tokens ===== */
+    :root {
+      --bg: #f3f5f8;
+      --bg-raised: #ffffff;
+      --surface: #ffffff;
+      --surface-2: #f0f3f7;
+      --border: #dde3ec;
+      --border-strong: #c3ccd9;
+      --text: #141b27;
+      --text-muted: #4a586c;
+      --text-faint: #66748a;
+      --accent: #3f6b00;
+      --accent-ink: #ffffff;
+      --accent-soft: rgba(63, 107, 0, .09);
+      --ok: #12794a;   --ok-soft: rgba(18, 121, 74, .10);
+      --warn: #8f5a00; --warn-soft: rgba(176, 112, 0, .12);
+      --bad: #b42323;  --bad-soft: rgba(180, 35, 35, .09);
+      --purple: #6e3fc3; --purple-soft: rgba(110, 63, 195, .11);
+      --focus: #0b63c5;
+      --shadow: 0 1px 2px rgba(20,27,39,.06), 0 6px 18px -10px rgba(20,27,39,.18);
+      --radius: 10px;
+      --font: "Fira Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      --mono: "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    h1, h2, h3, h4, p { margin: 0; }
+    a { color: inherit; }
+    button, input { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    .mono { font-family: var(--mono); }
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .hidden { display: none !important; }
+    svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+
+    /* ===== Layout ===== */
+    .wrap { max-width: 1400px; margin: 0 auto; padding: 0 20px; }
+
+    /* ===== Topbar ===== */
+    .topbar {
+      position: sticky; top: 0; z-index: 30;
+      background: color-mix(in srgb, var(--bg) 88%, transparent);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+    }
+    .topbar-inner { display: flex; align-items: center; gap: 16px; padding-top: 12px; padding-bottom: 12px; flex-wrap: wrap; }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; margin-right: auto; }
+    .brand-mark {
+      width: 34px; height: 34px; border-radius: 8px; flex: none;
+      background: var(--accent); color: var(--accent-ink);
+      display: grid; place-items: center;
+      font-family: var(--mono); font-weight: 600; font-size: 13px; letter-spacing: -.02em;
+    }
+    .brand h1 { font-size: 16px; font-weight: 700; letter-spacing: -.01em; line-height: 1.2; }
+    .brand p { font-size: 12px; color: var(--text-muted); }
+    .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      min-height: 36px; padding: 0 12px;
+      border-radius: 8px; border: 1px solid var(--border-strong);
+      background: var(--surface); color: var(--text);
+      font-size: 13px; font-weight: 500;
+      text-decoration: none;
+      transition: background-color .15s ease, border-color .15s ease, transform .15s ease;
+    }
+    .btn:hover { background: var(--surface-2); border-color: var(--text-faint); }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+    .btn-primary:hover { background: var(--accent); filter: brightness(1.08); border-color: var(--accent); }
+    .btn-ghost { background: transparent; border-color: transparent; color: var(--text-muted); }
+    .btn-ghost:hover { background: var(--surface-2); border-color: transparent; color: var(--text); }
+    .btn-danger { color: var(--bad); }
+    .btn-sm { min-height: 30px; padding: 0 10px; font-size: 12px; }
+    .btn.spin svg { animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===== Toolbar (status + filters) ===== */
+    .toolbar { display: flex; align-items: center; gap: 10px 22px; flex-wrap: wrap; padding: 14px 0; font-size: 12px; color: var(--text-muted); }
+    .toolbar .meta { display: flex; align-items: center; gap: 6px 18px; flex-wrap: wrap; margin-right: auto; }
+    .meta span { display: inline-flex; align-items: center; gap: 6px; }
+    .field { display: inline-flex; align-items: center; gap: 8px; }
+    .field input[type=number] {
+      width: 60px; min-height: 30px; text-align: center;
+      background: var(--surface); border: 1px solid var(--border-strong); border-radius: 6px;
+      font-family: var(--mono); font-size: 13px;
+    }
+    .switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+    .switch input { position: absolute; opacity: 0; }
+    .switch .track { width: 32px; height: 18px; border-radius: 999px; background: var(--border-strong); position: relative; transition: background-color .15s ease; }
+    .switch .track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--text); transition: transform .15s ease; }
+    .switch input:checked + .track { background: var(--accent); }
+    .switch input:checked + .track::after { transform: translateX(14px); background: var(--accent-ink); }
+    .switch input:focus-visible + .track { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+    /* ===== KPI strip ===== */
+    .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+    .kpi {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 12px 14px; box-shadow: var(--shadow);
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .kpi-label { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-muted); font-weight: 500; }
+    .kpi-value { font-family: var(--mono); font-size: 28px; font-weight: 600; letter-spacing: -.03em; line-height: 1.15; font-variant-numeric: tabular-nums; }
+    .kpi.ok .kpi-label { color: var(--ok); } .kpi.warn .kpi-label { color: var(--warn); } .kpi.bad .kpi-label { color: var(--bad); }
+    .kpi.bad .kpi-value { color: var(--bad); }
+
+    /* ===== Legend ===== */
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 22px; padding: 8px 14px; margin-bottom: 20px; font-size: 12px; color: var(--text-muted); background: var(--bg-raised); border: 1px dashed var(--border-strong); border-radius: var(--radius); }
+    .legend div { display: flex; align-items: center; gap: 8px; }
+    .legend strong { color: var(--text); font-weight: 600; }
+
+    /* ===== Status pills ===== */
+    .pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 1px 8px 1px 6px; border-radius: 999px;
+      font-size: 11.5px; font-weight: 500; line-height: 1.6; white-space: nowrap;
+    }
+    .pill svg.i { width: 12px; height: 12px; stroke-width: 2.5; }
+    .pill.ok     { color: var(--ok);     background: var(--ok-soft); }
+    .pill.warn   { color: var(--warn);   background: var(--warn-soft); }
+    .pill.bad    { color: var(--bad);    background: var(--bad-soft); }
+    .pill.purple { color: var(--purple); background: var(--purple-soft); }
+    .pill.muted  { color: var(--text-muted); background: var(--surface-2); }
+    .ico-ok { color: var(--ok); } .ico-warn { color: var(--warn); } .ico-bad { color: var(--bad); }
+
+    /* ===== Team cards ===== */
+    .teams { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 600px), 1fr)); gap: 16px; align-items: start; padding-bottom: 48px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; animation: rise .3s ease both; }
+    .card.has-bad { border-color: color-mix(in srgb, var(--bad) 45%, var(--border)); }
+    @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    .card-head { padding: 14px 16px 12px; display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+    .card-title-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .card-head h2 { font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+    .card-head:hover .edit-alias-btn { opacity: 1; }
+    .repo-link { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 12px; color: var(--text-muted); text-decoration: none; }
+    .repo-link:hover { color: var(--accent); text-decoration: underline; }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chip { font-size: 12px; color: var(--text-muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; }
+    .chip b { font-family: var(--mono); color: var(--text); font-weight: 600; margin-right: 3px; }
+
+    .health { display: flex; height: 6px; margin: 0 16px 12px; border-radius: 99px; overflow: hidden; background: var(--surface-2); gap: 2px; }
+    .health i { display: block; height: 100%; }
+    .health .h-ok { background: var(--ok); } .health .h-warn { background: var(--warn); } .health .h-bad { background: var(--bad); }
+    .collab-note { display: flex; align-items: center; gap: 6px; padding: 0 16px 12px; font-size: 11.5px; color: var(--text-faint); }
+
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    thead th {
+      padding: 8px 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+      color: var(--text-faint); background: var(--bg-raised); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    thead th:first-child, tbody td:first-child { padding-left: 16px; }
+    thead th:last-child, tbody td:last-child { padding-right: 16px; }
+    th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    tbody td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr { transition: background-color .15s ease; }
+    tbody tr:hover { background: var(--surface-2); }
+    .student { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .student img { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border-strong); background: var(--surface-2); flex: none; }
+    .student-info { min-width: 0; }
+    .student-name-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; line-height: 1.25; margin-bottom: 2px; }
+    .student button.primary-name-btn {
+      font-weight: 600; text-align: left; color: var(--text);
+      background: transparent; border: 0; padding: 0;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .student button.primary-name-btn:hover { color: var(--accent); text-decoration: underline; }
+    .gh-handle { font-family: var(--mono); font-size: 11.5px; color: var(--text-faint); }
+    .merged-badge {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+      color: var(--purple); background: var(--purple-soft);
+      padding: 0 6px; border-radius: 99px;
+    }
+    .edit-alias-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 5px;
+      border: 1px solid transparent; background: transparent;
+      color: var(--text-faint); padding: 0;
+      opacity: .65; transition: opacity .15s ease, background-color .15s ease, color .15s ease;
+    }
+    tbody tr:hover .edit-alias-btn, .edit-alias-btn:focus-visible { opacity: 1; }
+    .edit-alias-btn:hover { background: var(--border); color: var(--text); }
+    .edit-alias-btn svg.i { width: 13px; height: 13px; }
+    td.num .v { font-family: var(--mono); font-size: 13px; }
+    td.num a.metric-link, td.num button.metric-link {
+      text-decoration: none; color: inherit; border-radius: 4px; padding: 1px 4px;
+      background: transparent; border: 0;
+      transition: background-color .15s ease, color .15s ease;
+    }
+    td.num a.metric-link:hover, td.num button.metric-link:hover { background: var(--border); color: var(--accent); text-decoration: underline; }
+    td.num .v.zero { font-weight: 600; }
+    td.num .v.zero.bad { color: var(--bad); } td.num .v.zero.warn { color: var(--warn); }
+    td.num small { color: var(--text-faint); font-size: 11px; margin-left: 4px; display: inline-block; }
+    .issue-pair { display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px; white-space: nowrap; }
+    .issue-badge {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-family: var(--mono); font-size: 12px;
+      padding: 1px 6px; border-radius: 5px;
+      background: var(--surface-2); border: 1px solid var(--border);
+      text-decoration: none; color: var(--text);
+      transition: border-color .15s ease, background-color .15s ease;
+    }
+    .issue-badge:hover { border-color: var(--accent); background: var(--accent-soft); }
+    .issue-badge span.lbl-mini { font-family: var(--font); font-size: 10.5px; color: var(--text-faint); text-transform: uppercase; letter-spacing: .03em; }
+    td.when { text-align: right; color: var(--text-muted); font-size: 12.5px; white-space: nowrap; }
+    td.empty { text-align: center; padding: 22px; color: var(--text-muted); }
+    .table-scroll { overflow-x: auto; }
+
+    .card-foot { margin-top: auto; padding: 10px 16px; border-top: 1px solid var(--border); background: var(--bg-raised); display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--text-faint); }
+    .card-foot nav { display: flex; gap: 14px; }
+    .card-foot a { color: var(--text-muted); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+    .card-foot a:hover { color: var(--text); text-decoration: underline; }
+
+    .card.error { border-color: color-mix(in srgb, var(--bad) 55%, var(--border)); padding: 14px 16px; }
+    .card.error h2 { font-size: 15px; }
+    .card.error .err { color: var(--bad); margin-top: 6px; display: flex; gap: 6px; align-items: flex-start; }
+    code { font-family: var(--mono); font-size: 12px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+
+    /* ===== Empty / loading ===== */
+    .placeholder { grid-column: 1 / -1; max-width: 560px; margin: 32px auto; text-align: center; padding: 36px 28px; background: var(--surface); border: 1px dashed var(--border-strong); border-radius: 14px; }
+    .placeholder h2 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    .placeholder p { color: var(--text-muted); margin-bottom: 20px; }
+    .placeholder .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+    .loading { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 48px; color: var(--text-muted); }
+    .loading svg { animation: spin .8s linear infinite; }
+
+    /* ===== Modals ===== */
+    .overlay { position: fixed; inset: 0; z-index: 50; background: rgba(20, 27, 39, .45); backdrop-filter: blur(3px); display: none; align-items: flex-start; justify-content: center; padding: 4vh 16px; overflow-y: auto; }
+    .overlay.open { display: flex; }
+    .modal { width: 100%; max-width: 720px; background: var(--bg-raised); border: 1px solid var(--border-strong); border-radius: 14px; box-shadow: 0 30px 80px -20px rgba(20,27,39,.35); animation: rise .2s ease both; }
+    .modal.narrow { max-width: 520px; }
+    .modal.wide { max-width: 960px; }
+    .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 20px 14px; border-bottom: 1px solid var(--border); }
+    .modal-head h2 { font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+    .modal-head p { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+    .modal-body { padding: 18px 20px; display: grid; gap: 20px; }
+    .modal-foot { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; }
+    .modal-foot .group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .section-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .callout { background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); border-radius: var(--radius); padding: 14px; }
+    .callout-row { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    .callout h3 { font-size: 13px; font-weight: 600; }
+    .callout p { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+    .discovered { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); max-height: 220px; overflow-y: auto; display: grid; gap: 6px; font-size: 12.5px; }
+    .discovered .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; }
+    .msg-warn { color: var(--warn); } .msg-bad { color: var(--bad); } .msg-muted { color: var(--text-muted); }
+
+    .form-grid { display: grid; grid-template-columns: 5fr 5fr auto; gap: 8px; }
+    .input { width: 100%; min-height: 38px; padding: 0 12px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; }
+    .input::placeholder { color: var(--text-faint); }
+    .input:hover { border-color: var(--text-faint); }
+    label.lbl { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 4px; }
+    .help { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+    .team-list { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; max-height: 240px; overflow-y: auto; font-size: 13px; }
+    .team-list .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+    .team-list .row:last-child { border-bottom: 0; }
+    .team-list .row:hover { background: var(--surface-2); }
+    .team-list .empty { padding: 18px; text-align: center; color: var(--text-faint); }
+    .team-list .repo { font-family: var(--mono); font-size: 11.5px; color: var(--text-muted); }
+    .row-actions { display: flex; gap: 4px; }
+
+    .chip-select-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .chip-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 9px; border-radius: 99px; font-size: 12px; font-family: var(--mono);
+      background: var(--surface-2); border: 1px solid var(--border-strong); color: var(--text);
+      transition: background-color .15s ease, border-color .15s ease;
+    }
+    .chip-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
+    .chip-btn.active { background: var(--purple-soft); border-color: var(--purple); color: var(--purple); font-weight: 600; }
+
+    /* ===== Student Detail Modal Styles ===== */
+    .detail-header-profile { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    .detail-header-profile img { width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--border-strong); background: var(--surface-2); flex: none; }
+    .detail-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .detail-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .detail-kpi {
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 12px; display: flex; flex-direction: column; gap: 2px;
+    }
+    .detail-kpi .lbl { font-size: 11.5px; color: var(--text-muted); font-weight: 500; }
+    .detail-kpi .val { font-family: var(--mono); font-size: 22px; font-weight: 600; line-height: 1.2; }
+    .detail-kpi .sub { font-size: 11px; color: var(--text-faint); }
+
+    .latest-commit-box {
+      background: var(--surface-2); border: 1px solid var(--border-strong); border-left: 4px solid var(--accent);
+      border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .latest-commit-box.empty-box { border-left-color: var(--bad); background: var(--bad-soft); }
+    .latest-commit-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--text-muted); }
+    .commit-msg-title { font-weight: 600; font-size: 14px; color: var(--text); word-break: break-word; }
+    .commit-msg-body { font-family: var(--mono); font-size: 12px; color: var(--text-muted); white-space: pre-wrap; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; margin-top: 2px; }
+    .sha-badge { font-family: var(--mono); font-size: 11.5px; background: var(--surface); border: 1px solid var(--border-strong); padding: 1px 6px; border-radius: 5px; text-decoration: none; color: var(--text); }
+    .sha-badge:hover { border-color: var(--accent); color: var(--accent); }
+
+    .split-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .detail-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+    .detail-panel-head {
+      padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12.5px; font-weight: 600;
+    }
+    .detail-list { max-height: 250px; overflow-y: auto; }
+    .detail-list .empty { padding: 16px; text-align: center; color: var(--text-faint); }
+    .detail-item {
+      padding: 9px 14px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; font-size: 12.5px;
+    }
+    .detail-item:last-child { border-bottom: 0; }
+    .detail-item:hover { background: var(--surface-2); }
+    .detail-item-main { min-width: 0; flex: 1; }
+    .detail-item-title { font-weight: 500; color: var(--text); text-decoration: none; display: block; word-break: break-word; }
+    .detail-item-title:hover { color: var(--accent); text-decoration: underline; }
+    .detail-item-sub { font-size: 11.5px; color: var(--text-faint); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+    .gh-label {
+      display: inline-block; font-size: 10.5px; font-weight: 600; padding: 0 6px; border-radius: 99px;
+      border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text-muted);
+    }
+    .status-progress { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: var(--surface-2); margin-bottom: 10px; gap: 2px; }
+    .status-progress .bar-open { background: var(--warn); }
+    .status-progress .bar-closed { background: var(--ok); }
+
+    @media (max-width: 900px) {
+      .kpis, .detail-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .split-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .wrap { padding: 0 16px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .kpi-value { font-size: 24px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></symbol>
+      <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+      <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8"/><path d="m17 6 3 3"/><path d="m14 9 2 2"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3z"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+      <symbol id="i-ext" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+      <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+      <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.7 8.9a1 1 0 0 1-.6 0C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.2-2.7a1.2 1.2 0 0 1 1.6 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
+      <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></symbol>
+      <symbol id="i-commit" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M3 12h6"/><path d="M15 12h6"/></symbol>
+      <symbol id="i-pr" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M6 9v12"/></symbol>
+      <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+    </defs>
+  </svg>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">B2</div>
+        <div>
+          <h1>BEROEPS2 · GitHub Flow</h1>
+          <p>Grafisch Lyceum Rotterdam</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="refreshBtn" onclick="loadAllTeams()" class="btn btn-primary">
+          <svg class="i"><use href="#i-refresh"/></svg>Verversen
+        </button>
+        <button onclick="toggleTeamsModal()" class="btn">
+          <svg class="i"><use href="#i-users"/></svg>Teams &amp; Namen
+        </button>
+        <button onclick="toggleTokenModal()" class="btn">
+          <svg class="i"><use href="#i-key"/></svg>Token
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <!-- Status & filters -->
+    <div class="toolbar">
+      <div class="meta">
+        <span id="rateLimitStatus"><svg class="i"><use href="#i-pulse"/></svg>API: …</span>
+        <span id="lastUpdated">Update: –</span>
+        <span id="teamCountBadge">0 teams</span>
+      </div>
+      <label class="switch">
+        <input id="onlyAttention" type="checkbox" onchange="renderDashboard()">
+        <span class="track" aria-hidden="true"></span>
+        <span>Alleen aandacht</span>
+      </label>
+      <div class="field">
+        <label for="inactivityThreshold">Inactief na</label>
+        <input id="inactivityThreshold" type="number" value="7" min="1" max="60" onchange="loadAllTeams()">
+        <span>dagen</span>
+      </div>
+    </div>
+
+    <!-- KPI strip -->
+    <section class="kpis" id="kpis" aria-label="Samenvatting">
+      <div class="kpi"><div class="kpi-label">Studenten</div><div class="kpi-value">–</div></div>
+      <div class="kpi ok"><div class="kpi-label"><svg class="i"><use href="#i-check"/></svg>Op koers</div><div class="kpi-value">–</div></div>
+      <div class="kpi warn"><div class="kpi-label"><svg class="i"><use href="#i-alert"/></svg>Gesprekspunt</div><div class="kpi-value">–</div></div>
+      <div class="kpi bad"><div class="kpi-label"><svg class="i"><use href="#i-x"/></svg>Bijsturen</div><div class="kpi-value">–</div></div>
+    </section>
+
+    <!-- Uitleg -->
+    <section class="legend" aria-label="Uitleg indicatoren">
+      <div><svg class="i ico-ok"><use href="#i-check"/></svg><span><strong>Op koers</strong> — actief, gebruikt PR's</span></div>
+      <div><svg class="i ico-warn"><use href="#i-alert"/></svg><span><strong>Gesprekspunt</strong> — commits, geen PR's</span></div>
+      <div><svg class="i ico-bad"><use href="#i-x"/></svg><span><strong>Bijsturen</strong> — inactief of 0 bijdragen</span></div>
+      <div><svg class="i"><use href="#i-link"/></svg><span><strong>Ontdubbelen</strong> — klik op het potloodje bij een student om 2 accounts samen te voegen</span></div>
+    </section>
+
+    <!-- Teams -->
+    <main id="teamsContainer" class="teams"></main>
+  </div>
+
+  <!-- Modal 1: Teams & Studentnamen -->
+  <div id="teamsModal" class="overlay" role="dialog" aria-modal="true" aria-labelledby="teamsTitle" onclick="if(event.target===this)toggleTeamsModal()">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <h2 id="teamsTitle">Teams &amp; studentnamen beheren</h2>
+          <p>Wordt alleen lokaal in het geheugen van deze browser opgeslagen.</p>
+        </div>
+        <button onclick="toggleTeamsModal()" class="btn btn-ghost btn-sm" aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div class="callout">
+          <div class="callout-row">
+            <div>
+              <h3>Ophalen via GitHub</h3>
+              <p>Repo's waarvoor je collaborator bent (token nodig).</p>
+            </div>
+            <button onclick="discoverCollaboratorRepos()" class="btn btn-sm"><svg class="i"><use href="#i-search"/></svg>Zoeken</button>
+          </div>
+          <div id="discoveredReposContainer" class="discovered hidden"></div>
+        </div>
+
+        <div>
+          <h3 class="section-title">Team toevoegen</h3>
+          <div class="form-grid">
+            <input id="newTeamName" type="text" placeholder="Teamnaam" class="input" aria-label="Teamnaam">
+            <input id="newTeamRepo" type="text" placeholder="eigenaar/repo of URL" class="input mono" aria-label="Repository">
+            <button onclick="addTeamManually()" class="btn btn-primary"><svg class="i"><use href="#i-plus"/></svg>Toevoegen</button>
+          </div>
+          <p id="teamFormFeedback" class="help msg-bad hidden" style="margin-top:6px;margin-bottom:0"></p>
+        </div>
+
+        <div>
+          <h3 class="section-title">Teams
+            <button onclick="clearAllTeams()" class="btn btn-ghost btn-sm btn-danger">Alle teams wissen</button>
+          </h3>
+          <div id="configuredTeamsList" class="team-list"></div>
+        </div>
+
+        <div>
+          <h3 class="section-title">Gekoppelde studentnamen &amp; ontdubbelde accounts (lokaal)
+            <button onclick="clearAllAliases()" class="btn btn-ghost btn-sm btn-danger">Alle namen wissen</button>
+          </h3>
+          <p class="help">Tip: Geef twee accounts exact dezelfde echte naam (of scheid meerdere accounts met een komma, bijv. <code>sem-school, sem-prive</code>) om hun commits, PR's en issues automatisch samen te voegen.</p>
+          <div class="form-grid" style="margin-bottom:8px">
+            <input id="newAliasGithub" type="text" placeholder="Account(s), bijv. sem-glr, sem-prive" class="input mono" aria-label="GitHub-usernames">
+            <input id="newAliasRealName" type="text" placeholder="Echte naam (bijv. Sem de Vries)" class="input" aria-label="Echte naam">
+            <button onclick="addAliasManually()" class="btn"><svg class="i"><use href="#i-plus"/></svg>Koppelen</button>
+          </div>
+          <p id="aliasFormFeedback" class="help msg-bad hidden" style="margin-bottom:6px"></p>
+          <div id="configuredAliasesList" class="team-list"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <div class="group">
+          <button onclick="exportConfigJson()" class="btn btn-sm"><svg class="i"><use href="#i-download"/></svg>Exporteer .json</button>
+          <label class="btn btn-sm" style="cursor:pointer">
+            <svg class="i"><use href="#i-upload"/></svg>Importeer .json
+            <input type="file" accept=".json" onchange="importConfigJson(event)" class="sr-only">
+          </label>
+          <span id="importFeedback" class="help msg-bad hidden" style="margin:0;align-self:center"></span>
+        </div>
+        <button onclick="toggleTeamsModal(); loadAllTeams();" class="btn btn-primary">Sluiten &amp; Laden</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Token -->
+  <div id="tokenModal" class="overlay" role="dialog" aria-modal="true" aria-labelledby="tokenTitle" onclick="if(event.target===this)toggleTokenModal()">
+    <div class="modal narrow">
+      <div class="modal-head">
+        <div>
+          <h2 id="tokenTitle">Token &amp; docent</h2>
+          <p>Leesrechten volstaan. Zo zie je ook studenten met 0 commits.</p>
+        </div>
+        <button onclick="toggleTokenModal()" class="btn btn-ghost btn-sm" aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <div>
+          <label class="lbl" for="tokenInput">GitHub-token</label>
+          <input id="tokenInput" type="password" placeholder="ghp_… of github_pat_…" class="input mono" autocomplete="off">
+        </div>
+        <div>
+          <label class="lbl" for="teacherUsernameInput">Docent-gebruikersnaam</label>
+          <p class="help">Wordt uit de studentenlijst gefilterd.</p>
+          <input id="teacherUsernameInput" type="text" placeholder="bijv. docent-glr" class="input" autocomplete="off">
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button onclick="clearToken()" class="btn btn-ghost btn-sm btn-danger">Wissen</button>
+        <div class="group">
+          <button onclick="toggleTokenModal()" class="btn">Sluiten</button>
+          <button onclick="saveTokenAndTeacher()" class="btn btn-primary">Opslaan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: Studentnaam & Extra Accounts koppelen (Ontdubbelen) -->
+  <div id="aliasModal" class="overlay" role="dialog" aria-modal="true" aria-labelledby="aliasTitle" onclick="if(event.target===this)closeAliasModal()">
+    <div class="modal narrow">
+      <div class="modal-head">
+        <div>
+          <h2 id="aliasTitle">Studentnaam &amp; Accounts samenvoegen</h2>
+          <p>Hoofdaccount: <code id="aliasTargetHandle">@username</code></p>
+        </div>
+        <button onclick="closeAliasModal()" class="btn btn-ghost btn-sm" aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button>
+      </div>
+      <form onsubmit="saveAliasFromModal(event)">
+        <div class="modal-body">
+          <div>
+            <label class="lbl" for="aliasNameInput">Echte naam van student</label>
+            <p class="help">Alle accounts met exact dezelfde naam worden in een team automatisch samengevoegd.</p>
+            <input id="aliasNameInput" type="text" placeholder="Bijv. Sem de Vries" class="input" autocomplete="off">
+          </div>
+          <div>
+            <label class="lbl" for="aliasExtraHandlesInput">Extra accounts van deze student (ontdubbelen)</label>
+            <p class="help">Heeft deze student met een 2e GitHub-account of andere Git-naam gecommit? Vul ze komma-gescheiden in of klik hieronder een teamlid aan:</p>
+            <input id="aliasExtraHandlesInput" type="text" placeholder="Bijv. sem-prive, Sem Laptop" class="input mono" autocomplete="off">
+            <div id="teamMergeSuggestions" class="chip-select-list"></div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" onclick="removeCurrentAlias()" class="btn btn-ghost btn-sm btn-danger">Ontkoppelen</button>
+          <div class="group">
+            <button type="button" onclick="closeAliasModal()" class="btn">Annuleren</button>
+            <button type="submit" class="btn btn-primary">Opslaan &amp; Samenvoegen</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 4: Teamnaam bewerken -->
+  <div id="teamNameModal" class="overlay" role="dialog" aria-modal="true" aria-labelledby="teamNameModalTitle" onclick="if(event.target===this)closeTeamNameModal()">
+    <div class="modal narrow">
+      <div class="modal-head">
+        <div>
+          <h2 id="teamNameModalTitle">Teamnaam wijzigen</h2>
+          <p>Repository: <code id="teamNameTargetRepo">eigenaar/repo</code></p>
+        </div>
+        <button onclick="closeTeamNameModal()" class="btn btn-ghost btn-sm" aria-label="Sluiten"><svg class="i"><use href="#i-x"/></svg></button>
+      </div>
+      <form onsubmit="saveTeamNameFromModal(event)">
+        <div class="modal-body">
+          <div>
+            <label class="lbl" for="teamNameEditInput">Weergavenaam voor dit team</label>
+            <p class="help">Wordt alleen lokaal in jouw eigen browser opgeslagen.</p>
+            <input id="teamNameEditInput" type="text" placeholder="Bijv. Groep 2 - Webshop" class="input" autocomplete="off">
+          </div>
+        </div>
+        <div class="modal-foot" style="justify-content:flex-end">
+          <div class="group">
+            <button type="button" onclick="closeTeamNameModal()" class="btn">Annuleren</button>
+            <button type="submit" class="btn btn-primary">Opslaan</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 5: Student Detailpagina -->
+  <div id="studentDetailModal" class="overlay" role="dialog" aria-modal="true" aria-labelledby="studentDetailTitle" onclick="if(event.target===this)closeStudentDetailModal()">
+    <div class="modal wide" id="studentDetailContent">
+      <!-- Wordt dynamisch gevuld door openStudentDetailModal() -->
+    </div>
+  </div>
+
+  <script>
+    /**
+     * ============================================================================
+     * PRIVACY-PROOF OPSLAG (GEEN HARDCODED STUDENTEN OF REPO'S IN DEZE CODE)
+     * ============================================================================
+     */
+    const STORAGE_KEYS = {
+      TEAMS: 'glr_beroeps2_teams_v1',
+      ALIASES: 'glr_beroeps2_student_aliases_v1',
+      TOKEN: 'glr_gh_token',
+      TEACHER: 'glr_gh_teacher_username'
+    };
+
+    const DEFAULT_INACTIVITY_DAYS = 7;
+    const FALLBACK_AVATAR = 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png';
+
+    let lastResults = null; // [{ team, data } | { team, error }]
+    let activeAliasUsername = '';
+    let activeAliasRepo = '';
+    let activeTeamRepo = '';
+    let activeStudentDetail = null; // { repo, username }
+
+    const icon = (name, cls = '') => `<svg class="i ${cls}" aria-hidden="true"><use href="#i-${name}"/></svg>`;
+
+    function esc(value) {
+      return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+
+    const sameText = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+    const normalizeHandle = handle => handle.trim().replace(/^@/, '');
+    const parseHandleList = text => text.split(',').map(normalizeHandle).filter(Boolean);
+
+    function showInlineFeedback(id, message) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = message || '';
+      el.classList.toggle('hidden', !message);
+    }
+
+    function readJson(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch (e) {
+        return fallback;
+      }
+    }
+
+    function setOrRemoveStored(key, value) {
+      if (value) {
+        localStorage.setItem(key, value);
+      } else {
+        localStorage.removeItem(key);
+      }
+    }
+
+    function getThresholdDays() {
+      return parseInt(document.getElementById('inactivityThreshold').value, 10) || DEFAULT_INACTIVITY_DAYS;
+    }
+
+    function updateTeamCountBadge(count) {
+      document.getElementById('teamCountBadge').textContent = `${count} ${count === 1 ? 'team' : 'teams'}`;
+    }
+
+    function findTeamData(repo) {
+      if (!repo || !Array.isArray(lastResults)) return null;
+      const result = lastResults.find(r => r.data && sameText(r.data.repo, repo));
+      return result ? result.data : null;
+    }
+
+    /**
+     * ============================================================================
+     * TEAMS (LOKAAL OPGESLAGEN)
+     * ============================================================================
+     */
+    function getStoredTeams() {
+      return readJson(STORAGE_KEYS.TEAMS, []);
+    }
+
+    function saveStoredTeams(teams) {
+      localStorage.setItem(STORAGE_KEYS.TEAMS, JSON.stringify(teams));
+      renderConfiguredTeamsList();
+    }
+
+    function findStoredTeam(teams, repo) {
+      return teams.find(t => sameText(t.repo, repo));
+    }
+
+    function addTeamIfNew(name, repo) {
+      const teams = getStoredTeams();
+      if (findStoredTeam(teams, repo)) return;
+      teams.push({ name, repo });
+      saveStoredTeams(teams);
+    }
+
+    function updateTeamName(repo, newName) {
+      if (!repo) return;
+      const cleanName = (newName || '').trim() || repo;
+      const teams = getStoredTeams();
+      const target = findStoredTeam(teams, repo);
+      if (target) {
+        target.name = cleanName;
+        saveStoredTeams(teams);
+      }
+      if (!Array.isArray(lastResults)) return;
+
+      lastResults.forEach(r => {
+        if (r.team && sameText(r.team.repo, repo)) r.team.name = cleanName;
+        if (r.data && sameText(r.data.repo, repo)) r.data.teamName = cleanName;
+      });
+      renderDashboard();
+      if (activeStudentDetail && sameText(activeStudentDetail.repo, repo)) {
+        renderStudentDetailModalContent();
+      }
+    }
+
+    function focusAndSelect(input) {
+      setTimeout(() => {
+        input.focus();
+        input.select();
+      }, 20);
+    }
+
+    function openTeamNameModal(repo) {
+      if (!repo) return;
+      activeTeamRepo = repo;
+      const found = findStoredTeam(getStoredTeams(), repo);
+
+      document.getElementById('teamNameTargetRepo').textContent = repo;
+      const input = document.getElementById('teamNameEditInput');
+      input.value = found ? found.name : repo;
+      setModal('teamNameModal', true);
+      focusAndSelect(input);
+    }
+
+    function closeTeamNameModal() {
+      setModal('teamNameModal', false);
+      activeTeamRepo = '';
+    }
+
+    function saveTeamNameFromModal(event) {
+      event.preventDefault();
+      if (!activeTeamRepo) return;
+      updateTeamName(activeTeamRepo, document.getElementById('teamNameEditInput').value);
+      closeTeamNameModal();
+    }
+
+    /**
+     * ============================================================================
+     * LOKALE STUDENTNAMEN (ALIASES) & ACCOUNT ONTDUBBELING
+     * ============================================================================
+     * Wanneer twee of meer GitHub-usernames (of Git commit-namen) aan dezelfde
+     * studentnaam zijn gekoppeld, worden ze automatisch samengevoegd tot één
+     * student-profiel met gecombineerde commits, PR's en issues.
+     */
+    function getStoredAliases() {
+      return readJson(STORAGE_KEYS.ALIASES, {});
+    }
+
+    function saveStoredAliases(aliases) {
+      localStorage.setItem(STORAGE_KEYS.ALIASES, JSON.stringify(aliases));
+      renderConfiguredAliasesList();
+    }
+
+    function saveAliasesAndRerender(aliases) {
+      saveStoredAliases(aliases);
+      renderDashboard();
+      if (activeStudentDetail) renderStudentDetailModalContent();
+    }
+
+    function deleteAliasGroup(aliases, realName) {
+      Object.keys(aliases).forEach(handle => {
+        if (sameText(aliases[handle], realName)) delete aliases[handle];
+      });
+    }
+
+    function getStudentAlias(githubUsername) {
+      if (!githubUsername) return '';
+      return getStoredAliases()[githubUsername.toLowerCase()] || '';
+    }
+
+    // Vind alle andere handles die dezelfde studentnaam (alias) delen
+    function getLinkedHandlesForIdentity(githubUsername, realName) {
+      const targetName = (realName || getStudentAlias(githubUsername) || '').trim().toLowerCase();
+      if (!targetName) return [];
+      const primaryKey = (githubUsername || '').trim().toLowerCase();
+      return Object.entries(getStoredAliases())
+        .filter(([handle, alias]) => handle !== primaryKey && String(alias).trim().toLowerCase() === targetName)
+        .map(([handle]) => handle);
+    }
+
+    function setStudentAliasAndMerge(primaryUsername, realName, extraHandles = []) {
+      if (!primaryUsername) return;
+      const primaryKey = normalizeHandle(primaryUsername).toLowerCase();
+      const extraKeys = extraHandles
+        .map(h => normalizeHandle(h).toLowerCase())
+        .filter(h => h && h !== primaryKey);
+
+      const aliases = getStoredAliases();
+      const previousName = aliases[primaryKey];
+
+      // Als de docent géén echte naam invult maar wél een 2e account koppelt, gebruiken we de hoofd-username als groepsnaam
+      const effectiveName = (realName || '').trim() || (extraKeys.length > 0 ? primaryUsername.trim() : '');
+
+      // Ontkoppel accounts die uit de lijst met extra accounts zijn gehaald
+      if (previousName) {
+        Object.keys(aliases).forEach(handle => {
+          if (handle !== primaryKey && sameText(aliases[handle], previousName) && !extraKeys.includes(handle)) {
+            delete aliases[handle];
+          }
+        });
+      }
+
+      if (effectiveName) {
+        [primaryKey, ...extraKeys].forEach(handle => { aliases[handle] = effectiveName; });
+      } else {
+        delete aliases[primaryKey];
+      }
+
+      saveAliasesAndRerender(aliases);
+    }
+
+    function openAliasModal(githubUsername, repo = '') {
+      activeAliasUsername = githubUsername;
+      activeAliasRepo = repo || (activeStudentDetail ? activeStudentDetail.repo : '');
+      document.getElementById('aliasTargetHandle').textContent = `@${githubUsername}`;
+
+      const currentAlias = getStudentAlias(githubUsername);
+      const linkedOthers = getLinkedHandlesForIdentity(githubUsername, currentAlias);
+
+      const nameInput = document.getElementById('aliasNameInput');
+      nameInput.value = currentAlias;
+      document.getElementById('aliasExtraHandlesInput').value = linkedOthers.join(', ');
+
+      renderTeamMergeSuggestions(githubUsername, activeAliasRepo, linkedOthers);
+
+      setModal('aliasModal', true);
+      focusAndSelect(nameInput);
+    }
+
+    function renderTeamMergeSuggestions(primaryUsername, repo, currentlyLinked) {
+      const container = document.getElementById('teamMergeSuggestions');
+      if (!container) return;
+
+      const teamData = findTeamData(repo);
+      const otherAccountsInRepo = teamData && Array.isArray(teamData.rawMembers)
+        ? teamData.rawMembers.map(m => m.username).filter(u => u && !sameText(u, primaryUsername))
+        : [];
+
+      container.innerHTML = otherAccountsInRepo.map(handle => `
+        <button type="button" class="chip-btn ${currentlyLinked.includes(handle.toLowerCase()) ? 'active' : ''}" data-handle="${esc(handle)}" onclick="toggleSuggestedHandle(this.dataset.handle)">
+          ${icon('link')}@${esc(handle)}
+        </button>
+      `).join('');
+    }
+
+    function toggleSuggestedHandle(handle) {
+      const extrasInput = document.getElementById('aliasExtraHandlesInput');
+      const handles = parseHandleList(extrasInput.value);
+
+      const idx = handles.findIndex(h => sameText(h, handle));
+      if (idx >= 0) {
+        handles.splice(idx, 1);
+      } else {
+        handles.push(handle);
+      }
+      extrasInput.value = handles.join(', ');
+
+      const selected = handles.map(h => h.toLowerCase());
+      document.querySelectorAll('#teamMergeSuggestions .chip-btn').forEach(btn => {
+        btn.classList.toggle('active', selected.includes((btn.dataset.handle || '').toLowerCase()));
+      });
+    }
+
+    function closeAliasModal() {
+      setModal('aliasModal', false);
+      activeAliasUsername = '';
+      activeAliasRepo = '';
+    }
+
+    function saveAliasFromModal(event) {
+      event.preventDefault();
+      if (!activeAliasUsername) return;
+      const realName = document.getElementById('aliasNameInput').value;
+      const extraHandles = parseHandleList(document.getElementById('aliasExtraHandlesInput').value);
+      setStudentAliasAndMerge(activeAliasUsername, realName, extraHandles);
+      closeAliasModal();
+    }
+
+    function removeCurrentAlias() {
+      if (!activeAliasUsername) return;
+      const currentAlias = getStudentAlias(activeAliasUsername);
+      const aliases = getStoredAliases();
+
+      if (currentAlias) {
+        deleteAliasGroup(aliases, currentAlias);
+      } else {
+        delete aliases[activeAliasUsername.toLowerCase()];
+      }
+
+      saveAliasesAndRerender(aliases);
+      closeAliasModal();
+    }
+
+    function addAliasManually() {
+      const ghInput = document.getElementById('newAliasGithub');
+      const nameInput = document.getElementById('newAliasRealName');
+      const [firstHandle, ...restHandles] = parseHandleList(ghInput.value);
+      const name = nameInput.value.trim();
+
+      if (!firstHandle || !name) {
+        showInlineFeedback('aliasFormFeedback', 'Vul minimaal één GitHub-account én de echte naam van de student in.');
+        return;
+      }
+
+      showInlineFeedback('aliasFormFeedback', '');
+      setStudentAliasAndMerge(firstHandle, name, restHandles);
+      ghInput.value = '';
+      nameInput.value = '';
+    }
+
+    function removeAliasGroup(realName) {
+      const aliases = getStoredAliases();
+      deleteAliasGroup(aliases, realName);
+      saveAliasesAndRerender(aliases);
+    }
+
+    function clearAllAliases() {
+      saveAliasesAndRerender({});
+    }
+
+    // Groepeer per studentnaam zodat samengevoegde accounts netjes bij elkaar staan
+    function groupAliasesByName(aliases) {
+      const groups = {};
+      Object.entries(aliases).forEach(([handle, realName]) => {
+        const key = realName.trim().toLowerCase();
+        groups[key] ??= { realName: realName.trim(), handles: [] };
+        groups[key].handles.push(handle);
+      });
+      return Object.values(groups).sort((a, b) => a.realName.localeCompare(b.realName, 'nl'));
+    }
+
+    function renderConfiguredAliasesList() {
+      const listEl = document.getElementById('configuredAliasesList');
+      if (!listEl) return;
+      const groups = groupAliasesByName(getStoredAliases());
+
+      if (groups.length === 0) {
+        listEl.innerHTML = `<div class="empty">Nog geen studentnamen of samengevoegde accounts ingesteld. Klik op het potloodje bij een student in het overzicht.</div>`;
+        return;
+      }
+
+      listEl.innerHTML = groups.map(group => {
+        const mergedLabel = group.handles.length > 1
+          ? `<span class="merged-badge" style="margin-left:6px">${group.handles.length} accounts samengevoegd</span>`
+          : '';
+
+        return `
+          <div class="row">
+            <div>
+              <strong>${esc(group.realName)}</strong>${mergedLabel}
+              <div class="repo">${formatHandles(group.handles)}</div>
+            </div>
+            <div class="row-actions">
+              <button data-gh="${esc(group.handles[0])}" onclick="openAliasModal(this.dataset.gh)" class="btn btn-ghost btn-sm">Wijzigen</button>
+              <button data-name="${esc(group.realName)}" onclick="removeAliasGroup(this.dataset.name)" class="btn btn-ghost btn-sm btn-danger">Wissen</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function formatHandles(handles) {
+      return handles.map(h => `@${esc(h)}`).join(' + ');
+    }
+
+    /**
+     * ============================================================================
+     * STUDENT-PROFIELEN OPBOUWEN & SAMENVOEGEN
+     * ============================================================================
+     */
+    function createEmptyMember(username, avatar) {
+      return {
+        username,
+        handles: [username],
+        avatar: avatar || FALLBACK_AVATAR,
+        commitList: [],
+        prList: [],
+        createdIssueList: [],
+        assignedIssueList: [],
+        lastActive: null
+      };
+    }
+
+    function updateLastActive(member, dateStr) {
+      if (!dateStr) return;
+      if (!member.lastActive || new Date(dateStr) > new Date(member.lastActive)) {
+        member.lastActive = dateStr;
+      }
+    }
+
+    // Voegt items toe die nog niet in de lijst staan; items zonder sleutel worden altijd toegevoegd
+    function addUnique(list, items, keyOf) {
+      items.forEach(item => {
+        const key = keyOf(item);
+        if (!key || !list.some(existing => keyOf(existing) === key)) list.push(item);
+      });
+    }
+
+    const byNewest = dateOf => (a, b) => new Date(dateOf(b) || 0) - new Date(dateOf(a) || 0);
+
+    // Totalen worden altijd vanuit de (ontdubbelde) lijsten berekend
+    function withTotals(member) {
+      member.commitList.sort(byNewest(c => c.date));
+      member.prList.sort(byNewest(pr => pr.updatedAt || pr.createdAt));
+
+      member.commits = member.commitList.length;
+      member.prsCreated = member.prList.length;
+      member.prsMerged = member.prList.filter(pr => pr.state === 'merged').length;
+      member.issuesCreated = member.createdIssueList.length;
+      member.issuesAssigned = member.assignedIssueList.length;
+      member.issuesAssignedOpen = member.assignedIssueList.filter(i => i.state === 'open').length;
+      member.issuesAssignedClosed = member.assignedIssueList.filter(i => i.state === 'closed').length;
+      return member;
+    }
+
+    /**
+     * Voegt ruwe GitHub-accounts binnen een team samen wanneer ze via `aliases`
+     * aan dezelfde studentnaam zijn gekoppeld.
+     */
+    function mergeRawTeamMembers(rawMembers) {
+      const groups = {};
+
+      rawMembers.forEach(m => {
+        const alias = getStudentAlias(m.username).trim();
+        const groupKey = alias ? `alias:${alias.toLowerCase()}` : `raw:${m.username.toLowerCase()}`;
+
+        let target = groups[groupKey];
+        if (!target) {
+          target = groups[groupKey] = createEmptyMember(m.username, m.avatar);
+        } else {
+          if (!target.handles.some(h => sameText(h, m.username))) {
+            target.handles.push(m.username);
+          }
+          // Gebruik een echte GitHub avatar als het eerste account een fallback-icoon had
+          if (target.avatar.includes('GitHub-Mark') && m.avatar && !m.avatar.includes('GitHub-Mark')) {
+            target.avatar = m.avatar;
+          }
+        }
+
+        addUnique(target.commitList, m.commitList, c => c.sha);
+        addUnique(target.prList, m.prList, pr => pr.number);
+        addUnique(target.createdIssueList, m.createdIssueList, issue => issue.number);
+        addUnique(target.assignedIssueList, m.assignedIssueList, issue => issue.number);
+        updateLastActive(target, m.lastActive);
+      });
+
+      return Object.values(groups).map(withTotals).sort((a, b) => a.commits - b.commits);
+    }
+
+    function applyAliasMerges(results) {
+      results.forEach(r => {
+        if (r.data) r.data.members = mergeRawTeamMembers(r.data.rawMembers);
+      });
+    }
+
+    function getHeaders() {
+      const token = localStorage.getItem(STORAGE_KEYS.TOKEN);
+      const headers = { 'Accept': 'application/vnd.github+json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      return headers;
+    }
+
+    function getTeacherUsername() {
+      return (localStorage.getItem(STORAGE_KEYS.TEACHER) || '').trim().toLowerCase();
+    }
+
+    /**
+     * ============================================================================
+     * MODALS & BEHEER FUNCTIES
+     * ============================================================================
+     */
+    function setModal(id, open) {
+      document.getElementById(id).classList.toggle('open', open);
+    }
+
+    function isOpen(id) {
+      return document.getElementById(id).classList.contains('open');
+    }
+
+    function toggleTokenModal() {
+      const open = !isOpen('tokenModal');
+      if (open) {
+        document.getElementById('tokenInput').value = localStorage.getItem(STORAGE_KEYS.TOKEN) || '';
+        document.getElementById('teacherUsernameInput').value = localStorage.getItem(STORAGE_KEYS.TEACHER) || '';
+      }
+      setModal('tokenModal', open);
+      if (open) document.getElementById('tokenInput').focus();
+    }
+
+    function saveTokenAndTeacher() {
+      setOrRemoveStored(STORAGE_KEYS.TOKEN, document.getElementById('tokenInput').value.trim());
+      setOrRemoveStored(STORAGE_KEYS.TEACHER, document.getElementById('teacherUsernameInput').value.trim());
+      toggleTokenModal();
+      loadAllTeams();
+    }
+
+    function clearToken() {
+      localStorage.removeItem(STORAGE_KEYS.TOKEN);
+      localStorage.removeItem(STORAGE_KEYS.TEACHER);
+      document.getElementById('tokenInput').value = '';
+      document.getElementById('teacherUsernameInput').value = '';
+      toggleTokenModal();
+      loadAllTeams();
+    }
+
+    function toggleTeamsModal() {
+      const open = !isOpen('teamsModal');
+      if (open) {
+        renderConfiguredTeamsList();
+        renderConfiguredAliasesList();
+      }
+      setModal('teamsModal', open);
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (isOpen('aliasModal')) closeAliasModal();
+      else if (isOpen('teamNameModal')) closeTeamNameModal();
+      else if (isOpen('studentDetailModal')) closeStudentDetailModal();
+      else if (isOpen('teamsModal')) toggleTeamsModal();
+      else if (isOpen('tokenModal')) toggleTokenModal();
+    });
+
+    function cleanRepoPath(input) {
+      return input
+        .trim()
+        .replace(/^https?:\/\/github\.com\//i, '')
+        .replace(/\.git$/i, '')
+        .replace(/\/+$/, '');
+    }
+
+    function addTeamManually() {
+      const nameInput = document.getElementById('newTeamName');
+      const repoInput = document.getElementById('newTeamRepo');
+      const repo = cleanRepoPath(repoInput.value);
+
+      if (!repo.includes('/')) {
+        showInlineFeedback('teamFormFeedback', 'Voer een geldige repository in het formaat "eigenaar/repo-naam" of een GitHub URL in.');
+        return;
+      }
+
+      showInlineFeedback('teamFormFeedback', '');
+      addTeamIfNew(nameInput.value.trim() || repo, repo);
+      nameInput.value = '';
+      repoInput.value = '';
+    }
+
+    function removeTeam(index) {
+      const teams = getStoredTeams();
+      teams.splice(index, 1);
+      saveStoredTeams(teams);
+    }
+
+    function clearAllTeams() {
+      saveStoredTeams([]);
+      loadAllTeams();
+    }
+
+    function renderConfiguredTeamsList() {
+      const listEl = document.getElementById('configuredTeamsList');
+      const teams = getStoredTeams();
+      updateTeamCountBadge(teams.length);
+
+      if (teams.length === 0) {
+        listEl.innerHTML = `<div class="empty">Nog geen teams.</div>`;
+        return;
+      }
+
+      listEl.innerHTML = teams.map((t, idx) => `
+        <div class="row">
+          <div>
+            <strong>${esc(t.name)}</strong>
+            <div class="repo">${esc(t.repo)}</div>
+          </div>
+          <div class="row-actions">
+            <button data-repo="${esc(t.repo)}" onclick="openTeamNameModal(this.dataset.repo)" class="btn btn-ghost btn-sm">Wijzigen</button>
+            <button onclick="removeTeam(${idx})" class="btn btn-ghost btn-sm btn-danger">Verwijderen</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Automatisch repo's ontdekken waar de docent collaborator op is
+    async function discoverCollaboratorRepos() {
+      const container = document.getElementById('discoveredReposContainer');
+      container.classList.remove('hidden');
+
+      if (!localStorage.getItem(STORAGE_KEYS.TOKEN)) {
+        container.innerHTML = `<p class="msg-warn">Stel eerst een token in.</p>`;
+        return;
+      }
+
+      container.innerHTML = `<p class="msg-muted">Ophalen…</p>`;
+
+      try {
+        const res = await fetch('https://api.github.com/user/repos?affiliation=collaborator&sort=updated&per_page=100', {
+          headers: getHeaders()
+        });
+        if (!res.ok) throw new Error(`GitHub API gaf status ${res.status}`);
+        const repos = await res.json();
+        const currentTeams = getStoredTeams();
+
+        if (repos.length === 0) {
+          container.innerHTML = `<p class="msg-muted">Geen repo's gevonden.</p>`;
+          return;
+        }
+
+        container.innerHTML = repos.map(r => `
+          <div class="row">
+            <div>
+              <strong>${esc(r.name)}</strong>
+              <span class="mono msg-muted" style="margin-left:6px;font-size:11.5px">${esc(r.full_name)}</span>
+            </div>
+            ${findStoredTeam(currentTeams, r.full_name)
+              ? `<span class="pill ok">${icon('check')}Toegevoegd</span>`
+              : `<button data-name="${esc(r.name)}" data-full="${esc(r.full_name)}" onclick="quickAddDiscoveredRepo(this.dataset.name, this.dataset.full)" class="btn btn-sm">${icon('plus')}Toevoegen</button>`
+            }
+          </div>
+        `).join('');
+      } catch (err) {
+        container.innerHTML = `<p class="msg-bad">Fout: ${esc(err.message)}</p>`;
+      }
+    }
+
+    function quickAddDiscoveredRepo(name, fullName) {
+      addTeamIfNew(name, fullName);
+      discoverCollaboratorRepos();
+    }
+
+    // JSON Export & Import (inclusief gekoppelde studentnamen)
+    function exportConfigJson() {
+      const payload = {
+        version: 2,
+        teams: getStoredTeams(),
+        aliases: getStoredAliases()
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'beroeps2-config-lokaal.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Accepteert zowel een kale teams-array (v1) als { teams, aliases } (v2)
+    function applyImportedConfig(parsed) {
+      if (Array.isArray(parsed)) {
+        saveStoredTeams(parsed);
+        return true;
+      }
+      if (!parsed || typeof parsed !== 'object') return false;
+
+      if (Array.isArray(parsed.teams)) saveStoredTeams(parsed.teams);
+      if (parsed.aliases && typeof parsed.aliases === 'object') {
+        saveStoredAliases({ ...getStoredAliases(), ...parsed.aliases });
+      }
+      return true;
+    }
+
+    function importConfigJson(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          showInlineFeedback('importFeedback', '');
+          if (applyImportedConfig(JSON.parse(e.target.result))) {
+            loadAllTeams();
+          } else {
+            showInlineFeedback('importFeedback', 'Ongeldig JSON-formaat.');
+          }
+        } catch (err) {
+          showInlineFeedback('importFeedback', 'Kon het JSON-bestand niet lezen.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    /**
+     * ============================================================================
+     * GITHUB API & FORMATIEVE ANALYSE LOGICA
+     * ============================================================================
+     */
+    async function checkRateLimit() {
+      const el = document.getElementById('rateLimitStatus');
+      try {
+        const res = await fetch('https://api.github.com/rate_limit', { headers: getHeaders() });
+        if (!res.ok) return;
+        const { remaining, limit } = (await res.json()).rate;
+        const mode = localStorage.getItem(STORAGE_KEYS.TOKEN) ? 'token' : 'anoniem';
+        el.innerHTML = `${icon('pulse')}API (${mode}): <span class="mono">${remaining}/${limit}</span>`;
+      } catch (e) {
+        el.innerHTML = `${icon('pulse')}API: niet beschikbaar`;
+      }
+    }
+
+    function daysSince(dateString) {
+      if (!dateString) return Infinity;
+      return Math.floor((new Date() - new Date(dateString)) / (1000 * 60 * 60 * 24));
+    }
+
+    function formatDate(dateString) {
+      if (!dateString) return 'Geen activiteit';
+      return new Date(dateString).toLocaleDateString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric' });
+    }
+
+    function formatDateTime(dateString) {
+      if (!dateString) return 'Geen datum';
+      return new Date(dateString).toLocaleString('nl-NL', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function toCommitSummary(c, authorHandle) {
+      const [firstLine, ...restLines] = (c.commit?.message || '(Geen commit message)').split('\n');
+      return {
+        sha: c.sha,
+        shortSha: c.sha ? c.sha.substring(0, 7) : '–',
+        authorHandle,
+        title: firstLine.trim(),
+        body: restLines.join('\n').trim(),
+        date: c.commit?.author?.date,
+        url: c.html_url
+      };
+    }
+
+    function toPrSummary(pr) {
+      return {
+        number: pr.number,
+        title: pr.title,
+        authorHandle: pr.user.login,
+        state: pr.merged_at ? 'merged' : pr.state,
+        createdAt: pr.created_at,
+        updatedAt: pr.updated_at,
+        mergedAt: pr.merged_at,
+        url: pr.html_url,
+        headRef: pr.head?.ref || '',
+        baseRef: pr.base?.ref || ''
+      };
+    }
+
+    function toIssueSummary(issue) {
+      return {
+        number: issue.number,
+        title: issue.title,
+        state: issue.state,
+        createdAt: issue.created_at,
+        updatedAt: issue.updated_at,
+        closedAt: issue.closed_at,
+        labels: Array.isArray(issue.labels)
+          ? issue.labels.map(l => (typeof l === 'string' ? l : l.name)).filter(Boolean)
+          : [],
+        url: issue.html_url
+      };
+    }
+
+    function getIssueAssignees(issue) {
+      if (Array.isArray(issue.assignees) && issue.assignees.length > 0) return issue.assignees;
+      return issue.assignee ? [issue.assignee] : [];
+    }
+
+    async function fetchTeamData(team) {
+      const headers = getHeaders();
+      const baseUrl = `https://api.github.com/repos/${team.repo}`;
+      const teacherUsername = getTeacherUsername();
+
+      // Haal commits, PR's, issues, branches én (indien token aanwezig) collaborators parallel op
+      const [commitsRes, prsRes, issuesRes, branchesRes, collabRes] = await Promise.all([
+        fetch(`${baseUrl}/commits?per_page=100`, { headers }),
+        fetch(`${baseUrl}/pulls?state=all&per_page=100`, { headers }),
+        fetch(`${baseUrl}/issues?state=all&per_page=100`, { headers }),
+        fetch(`${baseUrl}/branches?per_page=100`, { headers }),
+        fetch(`${baseUrl}/collaborators`, { headers })
+      ]);
+
+      if (!commitsRes.ok) {
+        throw new Error(`Kan ${team.repo} niet ophalen (status ${commitsRes.status})`);
+      }
+
+      const commits = await commitsRes.json();
+      const prs = prsRes.ok ? await prsRes.json() : [];
+      const rawIssues = issuesRes.ok ? await issuesRes.json() : [];
+      const branches = branchesRes.ok ? await branchesRes.json() : [];
+      const collaborators = collabRes.ok ? await collabRes.json() : [];
+
+      // GitHub's /issues endpoint levert ook Pull Requests terug (herkenbaar aan .pull_request)
+      const pureIssues = Array.isArray(rawIssues)
+        ? rawIssues.filter(item => item && !item.pull_request)
+        : [];
+
+      const membersMap = {};
+      // Geeft het (nieuwe of bestaande) profiel terug, of null voor de docent
+      const memberFor = (login, avatar) => {
+        const key = login.toLowerCase();
+        if (key === teacherUsername) return null;
+        return membersMap[key] ??= createEmptyMember(login, avatar);
+      };
+
+      // Collaborators eerst, zodat ook studenten met 0 bijdragen zichtbaar zijn
+      if (Array.isArray(collaborators)) {
+        collaborators.forEach(user => {
+          if (user && user.login) memberFor(user.login, user.avatar_url);
+        });
+      }
+
+      commits.forEach(c => {
+        const login = c.author ? c.author.login : (c.commit?.author?.name || 'Onbekend');
+        const member = memberFor(login, c.author ? c.author.avatar_url : null);
+        if (!member) return;
+        const summary = toCommitSummary(c, login);
+        member.commitList.push(summary);
+        updateLastActive(member, summary.date);
+      });
+
+      prs.forEach(pr => {
+        if (!pr.user) return;
+        const member = memberFor(pr.user.login, pr.user.avatar_url);
+        if (!member) return;
+        member.prList.push(toPrSummary(pr));
+        updateLastActive(member, pr.updated_at || pr.created_at);
+      });
+
+      pureIssues.forEach(issue => {
+        const summary = toIssueSummary(issue);
+
+        const creator = issue.user && issue.user.login ? memberFor(issue.user.login, issue.user.avatar_url) : null;
+        if (creator) {
+          creator.createdIssueList.push(summary);
+          updateLastActive(creator, issue.created_at || issue.updated_at);
+        }
+
+        getIssueAssignees(issue).forEach(assignee => {
+          if (!assignee || !assignee.login) return;
+          const member = memberFor(assignee.login, assignee.avatar_url);
+          if (member) member.assignedIssueList.push(summary);
+        });
+      });
+
+      const rawMembers = Object.values(membersMap);
+      return {
+        teamName: team.name,
+        repo: team.repo,
+        collaboratorsDetected: collabRes.ok,
+        totalPRs: prs.length,
+        totalIssues: pureIssues.length,
+        openIssues: pureIssues.filter(i => i.state === 'open').length,
+        totalBranches: branches.length,
+        rawMembers,
+        members: mergeRawTeamMembers(rawMembers)
+      };
+    }
+
+    // level: 'ok' | 'warn' | 'bad' — icoon + tekst naast kleur, zodat status niet alleen op kleur steunt
+    function evaluateStudentStatus(student, thresholdDays) {
+      const inactiveDays = daysSince(student.lastActive);
+
+      if (student.commits === 0 && student.prsCreated === 0) {
+        return { level: 'bad', icon: 'x', label: '0 code-bijdragen' };
+      }
+      if (inactiveDays > thresholdDays) {
+        return { level: 'bad', icon: 'x', label: `${inactiveDays} dagen stil` };
+      }
+      if (student.commits > 2 && student.prsCreated === 0) {
+        return { level: 'warn', icon: 'alert', label: "Geen PR's" };
+      }
+      return { level: 'ok', icon: 'check', label: 'Op koers' };
+    }
+
+    /**
+     * ============================================================================
+     * STUDENT DETAIL WEERGAVE (DRILL-DOWN MODAL)
+     * ============================================================================
+     */
+    function openStudentDetailModal(repo, username) {
+      if (!repo || !username) return;
+      activeStudentDetail = { repo, username };
+      renderStudentDetailModalContent();
+      setModal('studentDetailModal', true);
+    }
+
+    function closeStudentDetailModal() {
+      setModal('studentDetailModal', false);
+      activeStudentDetail = null;
+    }
+
+    function findStudent(members, username) {
+      return members.find(m => m.handles.some(h => sameText(h, username)));
+    }
+
+    const externalLink = (href, cls, content, title = '') =>
+      `<a href="${esc(href)}" target="_blank" rel="noopener"${cls ? ` class="${cls}"` : ''}${title ? ` title="${esc(title)}"` : ''}>${content}</a>`;
+
+    const emptyListItem = text => `<div class="empty">${text}</div>`;
+
+    function renderLatestCommit(commit, fallbackHandle) {
+      if (!commit) {
+        return `
+          <div class="latest-commit-box empty-box">
+            <div class="commit-msg-title" style="color:var(--bad)">Geen commits gevonden voor deze student</div>
+            <p class="help" style="margin:0">Deze student heeft nog geen commits gepusht in de laatste 100 commits van deze repository.</p>
+          </div>
+        `;
+      }
+      return `
+        <div class="latest-commit-box">
+          <div class="latest-commit-meta">
+            <span>${icon('commit')}<strong>Laatste commit</strong> (${esc('@' + (commit.authorHandle || fallbackHandle))}) · ${esc(formatDateTime(commit.date))} (${daysSince(commit.date)}d geleden)</span>
+            ${externalLink(commit.url, 'sha-badge', `${esc(commit.shortSha)} ${icon('ext')}`, 'Open commit op GitHub')}
+          </div>
+          <div class="commit-msg-title">${esc(commit.title)}</div>
+          ${commit.body ? `<div class="commit-msg-body">${esc(commit.body)}</div>` : ''}
+        </div>
+      `;
+    }
+
+    function renderDetailItem(url, title, subHtml, asideHtml) {
+      return `
+        <div class="detail-item">
+          <div class="detail-item-main">
+            ${externalLink(url, 'detail-item-title', title)}
+            <div class="detail-item-sub">${subHtml}</div>
+          </div>
+          ${asideHtml}
+        </div>
+      `;
+    }
+
+    const numberedTitle = (number, title) => `<span class="mono msg-muted">#${number}</span> ${esc(title)}`;
+    const authorNote = (show, handle) => show && handle ? `<span class="mono">· @${esc(handle)}</span>` : '';
+
+    function renderIssueItem(issue) {
+      const stateBadge = issue.state === 'open'
+        ? `<span class="pill warn">Open</span>`
+        : `<span class="pill ok">Closed</span>`;
+      const sub = `
+        <span>Aangemaakt: ${esc(formatDate(issue.createdAt))}</span>
+        ${issue.closedAt ? `<span>· Gesloten: ${esc(formatDate(issue.closedAt))}</span>` : ''}
+        ${issue.labels.map(l => `<span class="gh-label">${esc(l)}</span>`).join('')}
+      `;
+      return renderDetailItem(issue.url, numberedTitle(issue.number, issue.title), sub, stateBadge);
+    }
+
+    function renderCommitItem(commit, showAuthor) {
+      const sub = `
+        <span>${esc(formatDateTime(commit.date))}</span>
+        ${authorNote(showAuthor, commit.authorHandle)}
+      `;
+      return renderDetailItem(commit.url, esc(commit.title), sub, externalLink(commit.url, 'sha-badge', esc(commit.shortSha)));
+    }
+
+    const PR_STATE_BADGES = {
+      merged: `<span class="pill purple">Merged</span>`,
+      open: `<span class="pill ok">Open</span>`,
+      closed: `<span class="pill muted">Closed</span>`
+    };
+
+    function renderPrItem(pr, showAuthor) {
+      const sub = `
+        ${pr.headRef && pr.baseRef ? `<span class="mono">${esc(pr.headRef)} → ${esc(pr.baseRef)}</span>` : ''}
+        <span>· ${esc(formatDate(pr.updatedAt || pr.createdAt))}</span>
+        ${authorNote(showAuthor, pr.authorHandle)}
+      `;
+      return renderDetailItem(pr.url, numberedTitle(pr.number, pr.title), sub, PR_STATE_BADGES[pr.state] || PR_STATE_BADGES.closed);
+    }
+
+    function renderDetailPanel(headHtml, itemsHtml, emptyText) {
+      return `
+        <div class="detail-panel">
+          <div class="detail-panel-head">${headHtml}</div>
+          <div class="detail-list">${itemsHtml || emptyListItem(emptyText)}</div>
+        </div>
+      `;
+    }
+
+    function renderStudentDetailModalContent() {
+      const container = document.getElementById('studentDetailContent');
+      if (!container || !activeStudentDetail) return;
+
+      const teamData = findTeamData(activeStudentDetail.repo);
+      if (!teamData) return;
+      const student = findStudent(teamData.members, activeStudentDetail.username);
+      if (!student) return;
+
+      const status = evaluateStudentStatus(student, getThresholdDays());
+      const displayName = getStudentAlias(student.username) || student.username;
+      const isMerged = student.handles.length > 1;
+      const encodedUser = encodeURIComponent(student.username);
+      const repoUrl = `https://github.com/${teamData.repo}`;
+
+      const openAssigned = student.assignedIssueList.filter(i => i.state === 'open');
+      const closedAssigned = student.assignedIssueList.filter(i => i.state === 'closed');
+      const totalAssigned = student.assignedIssueList.length;
+      const pctOf = count => (count / totalAssigned) * 100;
+
+      const prCountByState = state => student.prList.filter(p => p.state === state).length;
+
+      container.innerHTML = `
+        <div class="modal-head">
+          <div class="detail-header-profile">
+            <img src="${esc(student.avatar)}" alt="" width="48" height="48">
+            <div>
+              <div class="detail-title-row">
+                <h2 id="studentDetailTitle">${esc(displayName)}</h2>
+                <span class="gh-handle">${formatHandles(student.handles)}</span>
+                ${isMerged ? `<span class="merged-badge">${icon('link')}${student.handles.length} accounts samengevoegd</span>` : ''}
+                <button type="button" class="btn btn-ghost btn-sm" data-gh="${esc(student.username)}" data-repo="${esc(teamData.repo)}" onclick="openAliasModal(this.dataset.gh, this.dataset.repo)" title="Naam of gekoppelde accounts aanpassen">
+                  ${icon('edit')}Naam / Accounts
+                </button>
+                <span class="pill ${status.level}">${icon(status.icon)}${esc(status.label)}</span>
+              </div>
+              <p>
+                Team: <strong>${esc(teamData.teamName)}</strong> ·
+                ${externalLink(repoUrl, 'repo-link', `${esc(teamData.repo)} ${icon('ext')}`)}
+              </p>
+            </div>
+          </div>
+          <button onclick="closeStudentDetailModal()" class="btn btn-ghost btn-sm" aria-label="Sluiten">${icon('x')}</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="detail-kpis">
+            <div class="detail-kpi">
+              <span class="lbl">Commits (laatste 100)</span>
+              <span class="val">${student.commits}</span>
+              <span class="sub">Laatst actief: ${esc(formatDate(student.lastActive))}</span>
+            </div>
+            <div class="detail-kpi">
+              <span class="lbl">Pull Requests</span>
+              <span class="val">${student.prsCreated}</span>
+              <span class="sub">${prCountByState('merged')} merged · ${prCountByState('open')} open · ${prCountByState('closed')} closed</span>
+            </div>
+            <div class="detail-kpi">
+              <span class="lbl">Assigned Issues</span>
+              <span class="val">${totalAssigned}</span>
+              <span class="sub">${openAssigned.length} open · ${closedAssigned.length} afgerond (closed)</span>
+            </div>
+            <div class="detail-kpi">
+              <span class="lbl">Aangemaakte Issues</span>
+              <span class="val">${student.issuesCreated}</span>
+              <span class="sub">Door deze student gerapporteerd</span>
+            </div>
+          </div>
+
+          <div>
+            ${renderLatestCommit(student.commitList[0], student.username)}
+          </div>
+
+          <div>
+            <div class="section-title">
+              <span>Assigned Issues uitgesplitst per status (${totalAssigned} totaal)</span>
+              ${externalLink(`${repoUrl}/issues?q=is%3Aissue+assignee%3A${encodedUser}`, 'repo-link', `Bekijk op GitHub ${icon('ext')}`)}
+            </div>
+            ${totalAssigned > 0 ? `
+              <div class="status-progress" title="${openAssigned.length} Open, ${closedAssigned.length} Closed">
+                ${openAssigned.length ? `<div class="bar-open" style="width:${pctOf(openAssigned.length)}%"></div>` : ''}
+                ${closedAssigned.length ? `<div class="bar-closed" style="width:${pctOf(closedAssigned.length)}%"></div>` : ''}
+              </div>
+            ` : ''}
+            <div class="split-grid">
+              ${renderDetailPanel(
+                `<span>Openstaand / In uitvoering</span><span class="pill warn">${openAssigned.length} Open</span>`,
+                openAssigned.map(renderIssueItem).join(''),
+                'Geen openstaande issues toegewezen.'
+              )}
+              ${renderDetailPanel(
+                `<span>Afgerond</span><span class="pill ok">${closedAssigned.length} Closed</span>`,
+                closedAssigned.map(renderIssueItem).join(''),
+                'Nog geen afgeronde issues.'
+              )}
+            </div>
+          </div>
+
+          <div class="split-grid">
+            ${renderDetailPanel(
+              `<span>Recente Commits (${student.commitList.length})</span>${externalLink(`${repoUrl}/commits?author=${encodedUser}`, 'repo-link', `Alle commits ${icon('ext')}`)}`,
+              student.commitList.slice(0, 15).map(c => renderCommitItem(c, isMerged)).join(''),
+              'Geen commits gevonden.'
+            )}
+            ${renderDetailPanel(
+              `<span>Pull Requests (${student.prList.length})</span>${externalLink(`${repoUrl}/pulls?q=is%3Apr+author%3A${encodedUser}`, 'repo-link', `Alle PR's ${icon('ext')}`)}`,
+              student.prList.map(pr => renderPrItem(pr, isMerged)).join(''),
+              'Geen Pull Requests aangemaakt.'
+            )}
+          </div>
+        </div>
+
+        <div class="modal-foot">
+          <div class="group">
+            ${externalLink(`https://github.com/${encodedUser}`, 'btn btn-sm', `GitHub Profiel (@${esc(student.username)}) ${icon('ext')}`)}
+            ${externalLink(`${repoUrl}/issues?q=is%3Aissue+author%3A${encodedUser}`, 'btn btn-sm', `Door student aangemaakte issues (${student.issuesCreated}) ${icon('ext')}`)}
+          </div>
+          <button type="button" onclick="closeStudentDetailModal()" class="btn btn-primary">Sluiten</button>
+        </div>
+      `;
+    }
+
+    /**
+     * ============================================================================
+     * DASHBOARD WEERGAVE
+     * ============================================================================
+     */
+    // Attributen voor elementen die de detailpagina van een student openen
+    const detailTrigger = (repo, username) =>
+      `data-repo="${esc(repo)}" data-gh="${esc(username)}" onclick="openStudentDetailModal(this.dataset.repo, this.dataset.gh)"`;
+
+    function renderStudentRow(student, status, repo) {
+      const alias = getStudentAlias(student.username);
+      const displayName = alias || student.username;
+      const isMerged = student.handles.length > 1;
+      const handleBadge = alias || isMerged
+        ? `<span class="gh-handle">${formatHandles(student.handles)}</span>`
+        : '';
+      const mergedChip = isMerged
+        ? `<span class="merged-badge" title="Samengevoegd uit ${student.handles.length} accounts">${icon('link')}${student.handles.length}</span>`
+        : '';
+      const editTitle = alias
+        ? `Naam of gekoppelde accounts wijzigen (${alias})`
+        : `Studentnaam koppelen of accounts samenvoegen voor @${student.username}`;
+      const openDetail = detailTrigger(repo, student.username);
+      const issuesByStudentUrl = `https://github.com/${repo}/issues?q=is%3Aissue+author%3A${encodeURIComponent(student.username)}`;
+
+      return `
+        <tr>
+          <td>
+            <div class="student">
+              <img src="${esc(student.avatar)}" alt="" loading="lazy" width="28" height="28">
+              <div class="student-info">
+                <div class="student-name-row">
+                  <button type="button" class="primary-name-btn" ${openDetail} title="Open detailoverzicht voor ${esc(displayName)}">
+                    ${esc(displayName)}
+                  </button>
+                  ${handleBadge}
+                  ${mergedChip}
+                  <button type="button" class="edit-alias-btn" data-gh="${esc(student.username)}" data-repo="${esc(repo)}" onclick="openAliasModal(this.dataset.gh, this.dataset.repo)" title="${esc(editTitle)}" aria-label="${esc(editTitle)}">
+                    ${icon('edit')}
+                  </button>
+                </div>
+                <span class="pill ${status.level}">${icon(status.icon)}${esc(status.label)}</span>
+              </div>
+            </div>
+          </td>
+          <td class="num">
+            <button type="button" class="metric-link" ${openDetail} title="Bekijk laatste commit & historie van ${esc(displayName)}">
+              <span class="v ${student.commits === 0 ? 'zero bad' : ''}">${student.commits}</span>
+            </button>
+          </td>
+          <td class="num">
+            <button type="button" class="metric-link" ${openDetail} title="Bekijk Pull Requests van ${esc(displayName)}">
+              <span class="v ${student.prsCreated === 0 ? 'zero warn' : ''}">${student.prsCreated}</span>
+            </button>
+            <small>${student.prsMerged} merged</small>
+          </td>
+          <td class="num">
+            <div class="issue-pair">
+              ${externalLink(issuesByStudentUrl, 'issue-badge', `<span class="lbl-mini">gemaakt</span> ${student.issuesCreated}`, `Issues aangemaakt door ${displayName}`)}
+              <button type="button" class="issue-badge" ${openDetail} title="Klik voor uitsplitsing: ${student.issuesAssignedOpen} open, ${student.issuesAssignedClosed} closed">
+                <span class="lbl-mini">assigned</span> ${student.issuesAssigned}
+              </button>
+            </div>
+          </td>
+          <td class="when">${formatDate(student.lastActive)}</td>
+        </tr>
+      `;
+    }
+
+    function renderHealthBar(counts, total) {
+      if (!total) return '';
+      const segment = level => counts[level] ? `<i class="h-${level}" style="width:${(counts[level] / total) * 100}%"></i>` : '';
+      return `<div class="health" role="img" aria-label="${counts.ok} op koers, ${counts.warn} gesprekspunt, ${counts.bad} direct bijsturen">${segment('ok')}${segment('warn')}${segment('bad')}</div>`;
+    }
+
+    function renderTeamNameEditButton(repo, ariaLabel) {
+      return `
+        <button type="button" class="edit-alias-btn" data-repo="${esc(repo)}" onclick="openTeamNameModal(this.dataset.repo)" title="Teamnaam wijzigen" aria-label="${esc(ariaLabel)}">
+          ${icon('edit')}
+        </button>
+      `;
+    }
+
+    function renderTeamCard(data, thresholdDays, onlyAttention) {
+      const evaluated = data.members.map(student => ({ student, status: evaluateStudentStatus(student, thresholdDays) }));
+      const counts = { ok: 0, warn: 0, bad: 0 };
+      evaluated.forEach(e => counts[e.status.level]++);
+
+      const visible = onlyAttention ? evaluated.filter(e => e.status.level !== 'ok') : evaluated;
+      if (onlyAttention && visible.length === 0) return '';
+
+      const rowsHtml = visible.map(({ student, status }) => renderStudentRow(student, status, data.repo)).join('');
+      const repoUrl = `https://github.com/${data.repo}`;
+
+      const collabNote = data.collaboratorsDetected
+        ? ''
+        : `<div class="collab-note msg-warn">${icon('alert')}Alleen committers zichtbaar. Stel een token in voor studenten met 0 commits.</div>`;
+
+      return `
+        <article class="card ${counts.bad ? 'has-bad' : ''}">
+          <div class="card-head">
+            <div>
+              <div class="card-title-row">
+                <h2>${esc(data.teamName)}</h2>
+                ${renderTeamNameEditButton(data.repo, `Teamnaam wijzigen voor ${data.teamName}`)}
+              </div>
+              ${externalLink(repoUrl, 'repo-link', `${esc(data.repo)} ${icon('ext')}`)}
+            </div>
+            <div class="chips">
+              <span class="chip"><b>${data.totalBranches}</b>branches</span>
+              <span class="chip"><b>${data.totalPRs}</b>PR's</span>
+              <span class="chip" title="${data.openIssues} open issues"><b>${data.totalIssues}</b>issues</span>
+            </div>
+          </div>
+          ${renderHealthBar(counts, evaluated.length)}
+          ${collabNote}
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Student</th>
+                  <th scope="col" class="num">Commits</th>
+                  <th scope="col" class="num">PR's</th>
+                  <th scope="col" class="num">Issues</th>
+                  <th scope="col" class="num">Laatst actief</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml || '<tr><td colspan="5" class="empty">Geen activiteit.</td></tr>'}
+              </tbody>
+            </table>
+          </div>
+          <div class="card-foot">
+            <span>Klik op een student voor detailpagina · Potloodje om accounts samen te voegen</span>
+            <nav>
+              ${externalLink(`${repoUrl}/issues`, '', `Issues ${icon('ext')}`)}
+              ${externalLink(`${repoUrl}/pulls`, '', `PR's ${icon('ext')}`)}
+              ${externalLink(`${repoUrl}/network`, '', `Branches ${icon('ext')}`)}
+            </nav>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderErrorCard(team, err) {
+      return `
+        <article class="card error">
+          <div class="card-title-row">
+            <h2>${esc(team.name)}</h2>
+            ${renderTeamNameEditButton(team.repo, 'Teamnaam wijzigen')}
+          </div>
+          <p class="err">${icon('x')}<span>${esc(err.message)}</span></p>
+        </article>
+      `;
+    }
+
+    function renderKpis(results, thresholdDays) {
+      const totals = { students: 0, ok: 0, warn: 0, bad: 0 };
+      results.forEach(r => {
+        if (!r.data) return;
+        r.data.members.forEach(m => {
+          totals.students++;
+          totals[evaluateStudentStatus(m, thresholdDays).level]++;
+        });
+      });
+      const values = document.querySelectorAll('#kpis .kpi-value');
+      [totals.students, totals.ok, totals.warn, totals.bad].forEach((v, i) => { values[i].textContent = v; });
+    }
+
+    function renderDashboard() {
+      if (!lastResults) return;
+      const container = document.getElementById('teamsContainer');
+      const thresholdDays = getThresholdDays();
+      const onlyAttention = document.getElementById('onlyAttention').checked;
+
+      // Pas eventuele nieuwe alias-koppelingen direct toe
+      applyAliasMerges(lastResults);
+      renderKpis(lastResults, thresholdDays);
+
+      const html = lastResults.map(r => r.data
+        ? renderTeamCard(r.data, thresholdDays, onlyAttention)
+        : renderErrorCard(r.team, r.error)
+      ).join('');
+
+      container.innerHTML = html || `
+        <div class="placeholder">
+          <h2>Geen aandachtspunten</h2>
+          <p>Iedereen is op koers.</p>
+        </div>`;
+    }
+
+    function renderNoTeamsPlaceholder(container) {
+      container.innerHTML = `
+        <div class="placeholder">
+          <h2>Nog geen teams</h2>
+          <p>Voeg teams toe of haal ze op via GitHub. Alles blijft lokaal in je browser.</p>
+          <div class="row">
+            <button onclick="toggleTokenModal()" class="btn">${icon('key')}Token instellen</button>
+            <button onclick="toggleTeamsModal()" class="btn btn-primary">${icon('plus')}Teams toevoegen</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function setRefreshing(isRefreshing) {
+      const refreshBtn = document.getElementById('refreshBtn');
+      refreshBtn.classList.toggle('spin', isRefreshing);
+      refreshBtn.disabled = isRefreshing;
+    }
+
+    async function loadAllTeams() {
+      const container = document.getElementById('teamsContainer');
+      const teams = getStoredTeams();
+
+      updateTeamCountBadge(teams.length);
+      await checkRateLimit();
+
+      if (teams.length === 0) {
+        lastResults = null;
+        renderKpis([], getThresholdDays());
+        renderNoTeamsPlaceholder(container);
+        return;
+      }
+
+      setRefreshing(true);
+      container.innerHTML = `<div class="loading" role="status">${icon('refresh')}Ophalen…</div>`;
+
+      lastResults = await Promise.all(teams.map(async (team) => {
+        try {
+          return { team, data: await fetchTeamData(team) };
+        } catch (err) {
+          return { team, error: err };
+        }
+      }));
+
+      setRefreshing(false);
+      renderDashboard();
+      if (activeStudentDetail) {
+        renderStudentDetailModalContent();
+      }
+      document.getElementById('lastUpdated').textContent = `Update: ${new Date().toLocaleTimeString('nl-NL')}`;
+    }
+
+    window.addEventListener('DOMContentLoaded', loadAllTeams);
+  </script>
+</body>
+</html>
