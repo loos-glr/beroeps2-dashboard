@@ -387,3 +387,16 @@ label.lbl { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 
 .note-flag { display: inline-flex; color: var(--text-faint); }
 .note-flag svg.i { width: 13px; height: 13px; }
 .btn.spin svg { animation: spin .8s linear infinite; }
+
+/* Modals: notities, chips, formulieren */
+.textarea { width: 100%; min-height: 90px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; resize: vertical; }
+.notes-editor { display: grid; gap: 8px; }
+.notes-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.notes-saved { color: var(--ok); font-size: 12px; font-weight: 600; }
+.btn-danger-solid { background: var(--bad); border-color: var(--bad); color: #fff; font-weight: 600; }
+.handle-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 10px; border-radius: 99px; font-family: var(--mono); font-size: 12px; background: var(--purple-soft); color: var(--purple); font-weight: 600; }
+.handle-chip button { display: inline-flex; border: 0; background: transparent; color: inherit; padding: 2px; border-radius: 50%; }
+.handle-chip button:hover { background: var(--border); }
+.handle-chip svg.i { width: 12px; height: 12px; }
+.inline-add { display: flex; gap: 8px; margin-top: 8px; }
+.chip-btn small { font-family: var(--font); color: var(--text-faint); }

@@ -2,24 +2,31 @@ import { html } from '../lib/vue.js';
 import { session, bootstrap, onAuthenticated, onSignedOut } from '../store/session.js';
 import { contexts, load as loadContexts, reset as resetContexts } from '../store/contexts.js';
 import { clear as clearDashboard } from '../store/dashboard.js';
-import { ui, closeModal } from '../store/ui.js';
+import { ui, closeModal, openModal } from '../store/ui.js';
 import LoginView from './LoginView.js';
 import AppHeader from './AppHeader.js';
 import ContextBar from './ContextBar.js';
 import DashboardView from './DashboardView.js';
 import EmptyState from './EmptyState.js';
+import StudentDetail from './StudentDetail.js';
+import IdentityModal from './IdentityModal.js';
+import TeamEditModal from './TeamEditModal.js';
+import TokenModal from './TokenModal.js';
+import Icon from './ui/Icon.js';
 import Toasts from './ui/Toasts.js';
 
 onAuthenticated(loadContexts);
 onSignedOut(() => { resetContexts(); clearDashboard(); closeModal(); });
 
 /** Modals per type; komen binnen met 4d/4e. */
-const MODALS = {};
+const MODALS = { detail: StudentDetail, identity: IdentityModal, team: TeamEditModal, token: TokenModal };
 
 function Shell() {
   const Modal = ui.modal ? MODALS[ui.modal.type] : null;
   return html`
-    <${AppHeader} />
+    <${AppHeader}>
+      <button type="button" class="btn" onClick=${() => openModal('token')}><${Icon} name="key" />Token</button>
+    <//>
     ${contexts.loaded && contexts.list.length ? html`<${ContextBar} />` : null}
     ${!contexts.loaded
       ? html`<div class="loading" role="status">Klassen laden…</div>`

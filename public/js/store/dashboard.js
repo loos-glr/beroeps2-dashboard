@@ -128,3 +128,11 @@ export function saveSettings(patch, { reload = false } = {}) {
 
 // Nieuwe klas gekozen → dashboard van die klas laden
 watch(() => contexts.selectedId, id => (id ? load() : clear()));
+
+/** Zoekt een team en het lid dat deze handle bevat (key verandert na samenvoegen, handles niet). */
+export function findMember(teamId, handle) {
+  const team = dashboard.teams.find(t => t.id === teamId) ?? null;
+  const h = String(handle).toLowerCase();
+  const member = team?.members.find(m => m.handles.some(x => x.toLowerCase() === h)) ?? null;
+  return { team, member };
+}
