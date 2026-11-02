@@ -1,0 +1,56 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    ports:
+      - "${APP_PORT:-8080}:80"
+    volumes:
+      - ./:/var/www/html
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: ${DB_NAME:-glr_beroeps2}
+      DB_USER: ${DB_USER:-glr_user}
+      DB_PASS: ${DB_PASS:-glr_secret}
+      APP_SHARED_PASSWORD: ${APP_SHARED_PASSWORD:-glr-docent-2026}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      TEACHER_GITHUB_USERNAME: ${TEACHER_GITHUB_USERNAME:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mariadb:10.11
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "3307:3306"
+    environment:
+      MARIADB_ROOT_PASSWORD: root_secret
+      MARIADB_DATABASE: ${DB_NAME:-glr_beroeps2}
+      MARIADB_USER: ${DB_USER:-glr_user}
+      MARIADB_PASSWORD: ${DB_PASS:-glr_secret}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  pma:
+    image: phpmyadmin:latest
+    ports:
+      - "${PMA_PORT:-8081}:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: ${DB_USER:-glr_user}
+      PMA_PASSWORD: ${DB_PASS:-glr_secret}
+    depends_on:
+      - db
+
+volumes:
+  db_data:

@@ -45,13 +45,31 @@ Conventies (voor wie React kent):
   en CI controleert het. Dynamische breedtes lopen via `style=${{ width }}` (CSSOM).
 - Externe links gaan via `ExtLink` (alleen `https://github.com/`).
 
-## Lokaal draaien
+## Lokaal draaien (Docker Compose)
 
-ES-modules werken niet via `file://`. Start de PHP-server vanuit de projectmap
-(het router-script zorgt dat `/api/...` zonder Apache werkt). De frontend heeft de API en een database nodig:
+De primaire lokale omgeving bootst Plesk na: PHP 8.3 + Apache 2.4 (met `.htaccess`), MariaDB 10.11 en phpMyAdmin.
 
 ```bash
-cp .env.example .env   # alleen nodig voor de API
+cp .env.example .env   # optioneel; zonder .env gelden de defaults uit docker-compose.yml
+docker compose up -d --build
+```
+
+| Service | URL / poort | Opmerking |
+| --- | --- | --- |
+| Dashboard + API | http://localhost:8080 (`/api/health`) | `./` is gemount, wijzigingen zijn direct live |
+| phpMyAdmin | http://localhost:8081 | automatisch ingelogd met de app-gebruiker |
+| MariaDB | `localhost:3307` | root-wachtwoord `root_secret`; data in volume `db_data` |
+
+Poort bezet? Zet `APP_PORT` / `PMA_PORT` in `.env` of de shell.
+`sql/schema.sql` wordt bij de eerste start automatisch geladen. Opnieuw beginnen: `docker compose down -v`.
+Standaard inlogwachtwoord: `glr-docent-2026` (overschrijf met `APP_SHARED_PASSWORD`).
+Tests in de container: `docker compose exec -T app php tests/merge_test.php` en `... tests/import_test.php`.
+
+### Optioneel: zonder Docker
+
+Lichtgewicht fallback met de PHP built-in server (vereist zelf een MariaDB en een ingevulde `.env`):
+
+```bash
 php -S localhost:8000 -t public dev/router.php
 # dashboard: http://localhost:8000  ·  API: http://localhost:8000/api/health
 ```
