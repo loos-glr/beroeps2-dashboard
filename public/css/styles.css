@@ -372,3 +372,15 @@ label.lbl { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 
 .toast-stack { position: fixed; right: 16px; bottom: 16px; z-index: 60; display: grid; gap: 8px; max-width: min(380px, calc(100vw - 32px)); }
 .toast { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 10px; font-size: 13px; background: var(--surface); border: 1px solid var(--border-strong); border-left-width: 4px; box-shadow: var(--shadow); }
 .toast.ok { border-left-color: var(--ok); } .toast.warn { border-left-color: var(--warn); } .toast.bad { border-left-color: var(--bad); }
+
+/* Klassenbalk */
+.context-bar { background: var(--bg-raised); border-bottom: 1px solid var(--border); }
+.context-bar-inner { display: flex; align-items: center; gap: 10px 18px; flex-wrap: wrap; padding-top: 8px; padding-bottom: 8px; }
+.context-bar .field { font-size: 12px; color: var(--text-muted); }
+.select { min-height: 32px; padding: 0 8px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 6px; font-family: var(--mono); font-size: 13px; }
+.form-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.form-row.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.form-stack { display: grid; gap: 14px; text-align: left; margin-bottom: 14px; }
+.form-actions { display: flex; justify-content: center; }
+.placeholder.welcome { max-width: 640px; }
+@media (max-width: 640px) { .form-row, .form-row.two { grid-template-columns: 1fr; } }

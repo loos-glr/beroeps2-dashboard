@@ -1,8 +1,14 @@
 import { html } from '../lib/vue.js';
-import { session, bootstrap, logout } from '../store/session.js';
+import { session, bootstrap, logout, onAuthenticated, onSignedOut } from '../store/session.js';
+import { contexts, load as loadContexts, reset as resetContexts } from '../store/contexts.js';
+import ContextBar from './ContextBar.js';
+import EmptyState from './EmptyState.js';
 import LoginView from './LoginView.js';
 import Toasts from './ui/Toasts.js';
 import Icon from './ui/Icon.js';
+
+onAuthenticated(loadContexts);
+onSignedOut(resetContexts);
 
 // Tijdelijke shell (4a): header met gebruiker en uitloggen. Contextbalk en dashboard volgen in 4b/4c.
 function Shell() {
@@ -24,7 +30,10 @@ function Shell() {
         </div>
       </div>
     </header>
-    <div class="wrap"><main class="teams"><div class="placeholder"><h2>Ingelogd</h2><p>Het dashboard volgt in de volgende stap.</p></div></main></div>
+    ${contexts.list.length ? html`<${ContextBar} />` : null}
+    <div class="wrap"><main class="teams">${contexts.list.length
+      ? html`<div class="placeholder"><h2>Klas gekozen</h2><p>Het dashboard volgt in de volgende stap.</p></div>`
+      : html`<${EmptyState} variant="no-contexts" />`}</main></div>
   `;
 }
 
