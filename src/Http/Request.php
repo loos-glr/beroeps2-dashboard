@@ -17,6 +17,8 @@ final class Request
         public readonly array $query,
         private readonly string $rawBody,
         public readonly array $headers,
+        /** @var array<string, string> route-parameters, bv. {id} */
+        public readonly array $params = [],
     ) {
     }
 
@@ -55,6 +57,22 @@ final class Request
         }
 
         return '/' . trim(rawurldecode($uri), '/');
+    }
+
+    /** @param array<string, string> $params */
+    public function withParams(array $params): self
+    {
+        return new self($this->method, $this->path, $this->query, $this->rawBody, $this->headers, $params);
+    }
+
+    /** Positieve INT UNSIGNED uit het pad; anders 404 (zo matcht /teams/abc nooit). */
+    public function intParam(string $name): int
+    {
+        $raw = $this->params[$name] ?? '';
+        if (preg_match('/^[1-9]\d{0,9}$/', $raw) !== 1 || (int) $raw > 4294967295) {
+            throw new HttpException(404, 'Route niet gevonden');
+        }
+        return (int) $raw;
     }
 
     public function header(string $name): ?string

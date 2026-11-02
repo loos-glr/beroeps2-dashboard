@@ -21,7 +21,7 @@ bin/ dev/         CLI-hulpscript (wachtwoordhash) en router voor `php -S`
 ```
 
 De frontend werkt voorlopig nog volledig client-side (localStorage); de
-backend (Stap 1) levert database, login-sessie en API-skelet.
+backend levert database, login-sessie en de GitHub/dashboard-API (Stap 1 en 2).
 
 Frontend-modules (`public/js/`):
 
@@ -64,10 +64,22 @@ Alleen de frontend: `python3 -m http.server 8000 -d public`.
 5. Alleen nginx (zonder Apache)? Voeg toe aan de extra nginx-directives:
    `location /api/ { try_files $uri /api/index.php$is_args$args; }`
 
-API (JSON): `GET /api/health`, `GET /api/auth/me`, `POST /api/auth/login`
-(`{email?, password}`), `POST /api/auth/logout`. Niet-publieke routes vereisen een
-sessie en, bij POST/PUT/DELETE, de header `X-CSRF-Token`. Microsoft SSO:
-`AuthService::handleMicrosoftCallback()` is een placeholder (501).
+API (JSON). Niet-publieke routes vereisen een sessie en, bij POST/PATCH/PUT/DELETE, de
+header `X-CSRF-Token`. Microsoft SSO: `AuthService::handleMicrosoftCallback()` is een placeholder (501).
+
+| Route | Doel |
+| --- | --- |
+| `GET /health`, `GET /auth/me`, `POST /auth/login` (`{email?, password}`), `POST /auth/logout` | Status en sessie |
+| `GET /contexts`, `POST /contexts`, `PATCH /contexts/{id}` | Klassen (schooljaar + vak + klas), drempel en cache-TTL |
+| `GET /contexts/{id}/dashboard?force=0\|1` | Alle teams, studenten en KPI's van een klas |
+| `POST /teams`, `PATCH /teams/{id}`, `DELETE /teams/{id}`, `POST /teams/{id}/refresh` | Teams en verwachte leden |
+| `GET /students?q=`, `POST /students/identity`, `DELETE /students/{id}` | Studentnamen en gekoppelde GitHub-accounts (`handles` = volledige set) |
+| `GET /github/rate-limit`, `GET /github/collaborator-repos?contextId=` | GitHub-status en repo-ontdekking |
+
+GitHub-token: `GITHUB_TOKEN` uit `.env`; is die leeg dan wordt de request-header `X-GitHub-Token`
+gebruikt, anders werkt de API anoniem (60 requests/uur, geen collaborators).
+
+Tests: `php tests/merge_test.php` (samenvoegen, statusregels, snapshot-filters; geen DB nodig).
 
 ## Token instellen
 
@@ -80,6 +92,10 @@ sessie en, bij POST/PUT/DELETE, de header `X-CSRF-Token`. Microsoft SSO:
 
 ## Caching
 
+- **Server (Stap 2):** Laag 1 is `team_snapshots` (TTL = `academic_contexts.cache_ttl_minutes`),
+  Laag 2 is `github_http_cache` (ETag/`304`). Studentnamen en koppelingen worden bij elke
+  dashboard-request live over de snapshot gelegd. De beschrijving hieronder geldt voor de
+  huidige client-side frontend.
 - **Laag 1:** de ruwe teamdata wordt per repo in `localStorage` bewaard en
   gebruikt zolang die jonger is dan de TTL (keuzelijst in de toolbar,
   standaard 10 min, `0` = altijd live). Studentnamen en samengevoegde accounts

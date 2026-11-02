@@ -7,6 +7,7 @@ use App\Config\Env;
 use App\Database\Database;
 use App\Http\HttpException;
 use App\Http\JsonResponse;
+use App\Services\GitHubApiException;
 
 /** PSR-4 autoloader (App\ → src/), zodat Composer op Plesk optioneel is. */
 spl_autoload_register(static function (string $class): void {
@@ -34,6 +35,9 @@ set_error_handler(static function (int $severity, string $message, string $file,
 });
 
 set_exception_handler(static function (Throwable $e) use ($config): void {
+    if ($e instanceof GitHubApiException) {
+        $e = $e->toHttpException();
+    }
     if ($e instanceof HttpException) {
         JsonResponse::error($e->status, $e->getMessage());
     }

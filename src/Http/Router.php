@@ -6,10 +6,13 @@ namespace App\Http;
 
 use App\Auth\AuthService;
 
-/** Eenvoudige router. Niet-publieke routes lopen via AuthService::requireAuth() (+ CSRF bij muterende methodes). */
+/**
+ * Eenvoudige router met route-parameters ('/teams/{id}'). Niet-publieke routes lopen via
+ * AuthService::requireAuth() (+ CSRF bij muterende methodes).
+ */
 final class Router
 {
-    /** @var array<string, array<string, array{handler: callable, public: bool}>> */
+    /** @var list<array{method: string, regex: string, handler: callable, public: bool}> */
     private array $routes = [];
 
     public function __construct(private readonly AuthService $auth)
@@ -19,19 +22,37 @@ final class Router
     /** @param callable(Request): mixed $handler */
     public function add(string $method, string $path, callable $handler, bool $public = false): void
     {
-        $this->routes[$path][strtoupper($method)] = ['handler' => $handler, 'public' => $public];
+        $regex = preg_replace('/\\\\\{([a-z][a-z0-9_]*)\\\\\}/i', '(?P<$1>[^/]+)', preg_quote($path, '#'));
+        $this->routes[] = [
+            'method' => strtoupper($method),
+            'regex' => '#^' . $regex . '$#',
+            'handler' => $handler,
+            'public' => $public,
+        ];
     }
 
     public function dispatch(Request $request): never
     {
-        $methods = $this->routes[$request->path] ?? null;
-        if ($methods === null) {
-            throw new HttpException(404, 'Route niet gevonden');
+        $allowed = [];
+        $route = null;
+        $params = [];
+
+        foreach ($this->routes as $candidate) {
+            if (preg_match($candidate['regex'], $request->path, $m) !== 1) {
+                continue;
+            }
+            $allowed[] = $candidate['method'];
+            if ($candidate['method'] === $request->method && $route === null) {
+                $route = $candidate;
+                $params = array_filter($m, 'is_string', ARRAY_FILTER_USE_KEY);
+            }
         }
 
-        $route = $methods[$request->method] ?? null;
+        if ($allowed === []) {
+            throw new HttpException(404, 'Route niet gevonden');
+        }
         if ($route === null) {
-            header('Allow: ' . implode(', ', array_keys($methods)));
+            header('Allow: ' . implode(', ', array_unique($allowed)));
             throw new HttpException(405, 'Methode niet toegestaan');
         }
 
@@ -42,6 +63,6 @@ final class Router
             }
         }
 
-        JsonResponse::send(($route['handler'])($request) ?? ['ok' => true]);
+        JsonResponse::send(($route['handler'])($request->withParams($params)) ?? ['ok' => true]);
     }
 }
