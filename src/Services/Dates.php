@@ -23,4 +23,32 @@ final class Dates
         }
         return (new DateTimeImmutable($value, new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s\Z');
     }
+
+    public const PERIODS = ['all', 'sprint', '7days', 'today'];
+    private const SCHOOL_TZ = 'Europe/Amsterdam';
+
+    /**
+     * Begin van een periode in UTC (null = geen ondergrens). 'today' en 'sprint' rekenen met de
+     * dagwisseling in Europe/Amsterdam, omdat alle DATETIMEs in UTC staan.
+     *
+     * @return array{from: ?DateTimeImmutable, fallback: bool}
+     */
+    public static function periodStart(string $period, ?string $sprintStart, DateTimeImmutable $now): array
+    {
+        $utc = new DateTimeZone('UTC');
+        $local = new DateTimeZone(self::SCHOOL_TZ);
+        switch ($period) {
+            case 'today':
+                return ['from' => $now->setTimezone($local)->setTime(0, 0)->setTimezone($utc), 'fallback' => false];
+            case '7days':
+                return ['from' => $now->modify('-7 days'), 'fallback' => false];
+            case 'sprint':
+                if ($sprintStart === null || $sprintStart === '') {
+                    return ['from' => null, 'fallback' => true];
+                }
+                return ['from' => (new DateTimeImmutable($sprintStart . ' 00:00:00', $local))->setTimezone($utc), 'fallback' => false];
+            default:
+                return ['from' => null, 'fallback' => false];
+        }
+    }
 }

@@ -1,6 +1,6 @@
 import { html, ref, computed, watch } from '../lib/vue.js';
 import { dashboard, findMember } from '../store/dashboard.js';
-import { levelOf } from '../util/status.js';
+import { levelOf, periodLabel } from '../util/status.js';
 import { formatDate, formatDateTime, daysSince } from '../util/format.js';
 import { repoUrl, profileUrl, issuesByAuthorUrl, issuesByAssigneeUrl, commitsByAuthorUrl, prsByAuthorUrl, labelUrl } from '../util/links.js';
 import Modal from './ui/Modal.js';
@@ -72,10 +72,10 @@ export default {
             <${NotesEditor} member=${m} onDirty=${v => { dirty.value = v; }} />
 
             <div class="detail-kpis">
-              <div class="detail-kpi"><span class="lbl">Commits (laatste 100)</span><span class="val">${tot.commits}</span><span class="sub">Laatst actief: ${formatDate(m.lastActive)}</span></div>
-              <div class="detail-kpi"><span class="lbl">Pull Requests</span><span class="val">${tot.prsCreated}</span><span class="sub">${tot.prsMerged} merged · ${tot.prsOpen} open</span></div>
+              <div class="detail-kpi"><span class="lbl">Commits (${periodLabel(dashboard.period)})</span><span class="val">${tot.commits}</span><span class="sub">Laatst actief: ${formatDate(m.lastActive)}</span></div>
+              <div class="detail-kpi"><span class="lbl">Pull Requests (${periodLabel(dashboard.period)})</span><span class="val">${tot.prsCreated}</span><span class="sub">${tot.prsMerged} merged · ${tot.prsOpen} open</span></div>
               <div class="detail-kpi"><span class="lbl">Assigned Issues</span><span class="val">${tot.issuesAssigned}</span><span class="sub">${tot.issuesAssignedOpen} open · ${tot.issuesAssignedClosed} afgerond</span></div>
-              <div class="detail-kpi"><span class="lbl">Aangemaakte Issues</span><span class="val">${tot.issuesCreated}</span><span class="sub">Door deze student gerapporteerd</span></div>
+              <div class="detail-kpi"><span class="lbl">Aangemaakte Issues (${periodLabel(dashboard.period)})</span><span class="val">${tot.issuesCreated}</span><span class="sub">Door deze student gerapporteerd</span></div>
             </div>
 
             ${lc ? html`
@@ -89,7 +89,7 @@ export default {
               </div>` : html`
               <div class="latest-commit-box empty-box">
                 <div class="commit-msg-title msg-bad">Geen commits gevonden voor deze student</div>
-                <p class="help">Niet in de laatste 100 commits van deze repository.</p>
+                <p class="help">Er zijn nog geen commits van dit account gesynchroniseerd.</p>
               </div>`}
 
             <div>
@@ -105,14 +105,14 @@ export default {
             </div>
 
             <div class="split-grid">
-              ${Panel(html`<span>Recente Commits (${m.commits.length})</span><${ExtLink} href=${commitsByAuthorUrl(team.repo, m.username)} cls="repo-link">Alle commits <${Icon} name="ext" /><//>`,
-                m.commits.slice(0, 15).map(c => Item(c.sha || c.date, c.url, c.title, html`<span>${formatDateTime(c.date)}</span>${author(c.authorHandle)}`,
-                  html`<${ExtLink} href=${c.url} cls="sha-badge">${c.shortSha}<//>`)), 'Geen commits gevonden.')}
+              ${Panel(html`<span>Recente Commits (${periodLabel(dashboard.period)}: ${tot.commits})</span><${ExtLink} href=${commitsByAuthorUrl(team.repo, m.username)} cls="repo-link">Alle commits <${Icon} name="ext" /><//>`,
+                m.commits.map(c => Item(c.sha || c.date, c.url, c.title, html`<span>${formatDateTime(c.date)}</span>${author(c.authorHandle)}`,
+                  html`<${ExtLink} href=${c.url} cls="sha-badge">${c.shortSha}<//>`)), 'Geen commits in deze periode.')}
               ${Panel(html`<span>Pull Requests (${m.pullRequests.length})</span><${ExtLink} href=${prsByAuthorUrl(team.repo, m.username)} cls="repo-link">Alle PR's <${Icon} name="ext" /><//>`,
                 m.pullRequests.map(pr => { const [cls, label] = PR_PILL[pr.state] ?? PR_PILL.closed;
                   return Item(`p${pr.number}`, pr.url, html`<span class="mono msg-muted">#${pr.number}</span> ${pr.title}`,
                     html`${pr.headRef && pr.baseRef ? html`<span class="mono">${pr.headRef} → ${pr.baseRef}</span>` : null}<span>· ${formatDate(pr.updatedAt || pr.createdAt)}</span>${author(pr.authorHandle)}`,
-                    html`<${Pill} cls=${cls}>${label}<//>`); }), 'Geen Pull Requests aangemaakt.')}
+                    html`<${Pill} cls=${cls}>${label}<//>`); }), 'Geen Pull Requests in deze periode.')}
             </div>
           </div>
           <div class="modal-foot">

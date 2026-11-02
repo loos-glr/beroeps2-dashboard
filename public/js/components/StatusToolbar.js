@@ -1,8 +1,9 @@
 import { html } from '../lib/vue.js';
-import { dashboard, saveSettings } from '../store/dashboard.js';
+import { dashboard, saveSettings, setPeriod } from '../store/dashboard.js';
 import { selected } from '../store/contexts.js';
 import { ui } from '../store/ui.js';
 import { formatTime } from '../util/format.js';
+import { PERIODS } from '../util/status.js';
 import Icon from './ui/Icon.js';
 
 const TTL_OPTIONS = [0, 5, 10, 30, 60];
@@ -14,22 +15,22 @@ export default {
     return () => {
       const ctx = selected.value;
       const gh = dashboard.github;
-      const rl = gh?.rateLimit;
-      const req = dashboard.requests;
+      const gql = gh?.graphql;
+      const sync = dashboard.sync;
       const total = dashboard.teams.length;
-      const rlCls = rl ? (rl.remaining === 0 ? 'msg-bad' : rl.remaining < rl.limit * 0.1 ? 'msg-warn' : '') : '';
-      const cacheTitle = req
-        ? `${req.fromSnapshot} van ${total} teams uit opgeslagen data. ${req.made} requests gedaan (${req.notModified}× 304 Not Modified, telt niet mee voor de rate limit).`
+      const gqlCls = gql ? (gql.remaining === 0 ? 'msg-bad' : gql.remaining < gql.limit * 0.1 ? 'msg-warn' : '') : '';
+      const syncTitle = sync
+        ? `${sync.synced} van ${total} teams zijn nu gesynchroniseerd, ${sync.fromDb} komen uit de database${sync.failed ? `, ${sync.failed} mislukt` : ''}. Van periode wisselen betaalt GitHub niets.`
         : '';
       return html`
         <div class="toolbar">
           <div class="meta">
-            <span class=${rlCls}><${Icon} name="pulse" />${rl
-              ? html`API (${AUTH_LABEL[gh.authMode] ?? gh.authMode}): <span class="mono">${rl.remaining}/${rl.limit}</span> · reset ${formatTime(rl.resetAt)}`
-              : 'API: –'}</span>
-            <span title=${cacheTitle}><${Icon} name="shield" />${req
-              ? html`Cache: <span class="mono">${req.fromSnapshot}/${total}</span> teams · <span class="mono">${req.made}</span> requests (${req.notModified}× 304)`
-              : 'Cache: –'}</span>
+            <span class=${gqlCls}><${Icon} name="pulse" />${gql
+              ? html`GraphQL (${AUTH_LABEL[gh.authMode] ?? gh.authMode}): <span class="mono">${gql.remaining}/${gql.limit}</span> · reset ${formatTime(gql.resetAt)}`
+              : 'GraphQL: –'}</span>
+            <span title=${syncTitle}><${Icon} name="shield" />${sync
+              ? html`Sync: <span class="mono">${sync.synced}/${total}</span> teams · <span class="mono">${sync.cost}</span> ${sync.cost === 1 ? 'punt' : 'punten'}${sync.failed ? html` · <span class="msg-bad">${sync.failed} mislukt</span>` : null}`
+              : 'Sync: –'}</span>
             <span>Update: ${formatTime(dashboard.generatedAt)}</span>
             <span>${total} ${total === 1 ? 'team' : 'teams'}</span>
           </div>
@@ -37,7 +38,19 @@ export default {
             <input type="checkbox" checked=${ui.onlyAttention} onChange=${e => { ui.onlyAttention = e.target.checked; }} />
             <span class="track" aria-hidden="true"></span><span>Alleen aandacht</span>
           </label>
+          <div class="field">
+            <label for="period">Periode</label>
+            <select id="period" value=${dashboard.period} onChange=${e => setPeriod(e.target.value)}>
+              ${PERIODS.map(p => html`<option key=${p.key} value=${p.key} selected=${p.key === dashboard.period}>${p.label}</option>`)}
+            </select>
+          </div>
           ${ctx ? html`
+            <div class="field">
+              <label for="sprintStart">Sprint start</label>
+              <input id="sprintStart" type="date" value=${ctx.sprintStartDate ?? ''}
+                onChange=${e => saveSettings({ sprintStartDate: e.target.value || null }, { reload: dashboard.period === 'sprint' })} />
+              ${dashboard.period === 'sprint' && dashboard.periodInfo?.fallback ? html`<span class="msg-warn">niet ingesteld: alles getoond</span>` : null}
+            </div>
             <div class="field">
               <label for="cacheTtl">Cache</label>
               <select id="cacheTtl" value=${ctx.cacheTtlMinutes} onChange=${e => saveSettings({ cacheTtlMinutes: Number(e.target.value) })}>

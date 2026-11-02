@@ -9,6 +9,7 @@ use App\Http\JsonResponse;
 use App\Http\Request;
 use App\Http\Validate;
 use App\Services\ContextService;
+use App\Services\Dates;
 use App\Services\MigrationService;
 use App\Services\TeamAnalyticsService;
 
@@ -47,7 +48,25 @@ final class ContextController
         if ($force !== '0' && $force !== '1') {
             throw new HttpException(422, "Parameter 'force' moet 0 of 1 zijn");
         }
-        return $this->analytics->getContextDashboardData($request->intParam('id'), $force === '1');
+        $sync = $request->query['sync'] ?? '1';
+        if ($sync !== '0' && $sync !== '1') {
+            throw new HttpException(422, "Parameter 'sync' moet 0 of 1 zijn");
+        }
+        if ($force === '1' && $sync === '0') {
+            throw new HttpException(422, "Parameters 'force=1' en 'sync=0' sluiten elkaar uit");
+        }
+        return $this->analytics->getContextDashboardData(
+            $request->intParam('id'), $force === '1', $this->period($request), $sync === '1'
+        );
+    }
+
+    private function period(Request $request): string
+    {
+        $period = $request->query['period'] ?? 'all';
+        if (!is_string($period) || !in_array($period, Dates::PERIODS, true)) {
+            throw new HttpException(422, "Parameter 'period' moet all, sprint, 7days of today zijn");
+        }
+        return $period;
     }
 
     /** @return array<string, mixed> */
@@ -66,7 +85,7 @@ final class ContextController
 
     /**
      * @param array<string, mixed> $body
-     * @return array<string, scalar> kolomnaam => waarde
+     * @return array<string, scalar|null> kolomnaam => waarde
      */
     private function columns(array $body, bool $required): array
     {
@@ -98,6 +117,16 @@ final class ContextController
         $ttl = Validate::int($body, 'cacheTtlMinutes', 0, 1440);
         if ($ttl !== null) {
             $cols['cache_ttl_minutes'] = $ttl;
+        }
+        if (array_key_exists('sprintStartDate', $body)) {
+            $date = $body['sprintStartDate'];
+            if ($date === null || $date === '') {
+                $cols['sprint_start_date'] = null;          // wissen
+            } elseif (is_string($date) && preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $m) === 1 && checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+                $cols['sprint_start_date'] = $date;
+            } else {
+                throw new HttpException(422, "Veld 'sprintStartDate' moet de vorm YYYY-MM-DD hebben");
+            }
         }
         return $cols;
     }

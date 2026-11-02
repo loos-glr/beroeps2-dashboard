@@ -4,6 +4,7 @@ export const KEYS = {
   GH_TOKEN: 'glr_gh_token',
   CONTEXT_ID: 'glr_b2_context_id',
   ONLY_ATTENTION: 'glr_b2_only_attention',
+  PERIOD: 'glr_b2_period',
   POC_TEAMS: 'glr_beroeps2_teams_v1',
   POC_ALIASES: 'glr_beroeps2_student_aliases_v1',
 };

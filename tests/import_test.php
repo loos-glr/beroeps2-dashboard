@@ -102,7 +102,9 @@ $ident = ['studentId' => 1, 'fullName' => $sem['fullName'], 'studentNumber' => n
 $identityMap = array_fill_keys($sem['handles'], $ident);       // wat loadIdentityMap na de import oplevert
 $snap = [
     'accounts' => [
-        'sem-glr' => ['login' => 'sem-glr', 'avatar' => null, 'isGitName' => false, 'lastActive' => null, 'commits' => [], 'prs' => [], 'createdIssues' => [], 'assignedIssues' => []],
+        'sem-glr' => ['login' => 'sem-glr', 'avatar' => null, 'isGitName' => false, 'lastActive' => null,
+            'commits' => [], 'commitCount' => 0, 'commitCountAll' => 0, 'latestCommit' => null,
+            'prs' => [], 'prCountAll' => 0, 'createdIssues' => [], 'createdIssuesAll' => 0, 'assignedIssues' => []],
     ],
     'collaborators' => [], 'issues' => [],
 ];

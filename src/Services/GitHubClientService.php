@@ -36,7 +36,7 @@ final class GitHubClientService
     /* ===== Token ===== */
 
     /** Het .env-token wint; de X-GitHub-Token header geldt alleen als .env leeg is en het formaat klopt. */
-    private function token(): string
+    public function token(): string
     {
         if ($this->config->githubToken !== '') {
             return $this->config->githubToken;
@@ -177,7 +177,7 @@ final class GitHubClientService
     /**
      * Rate limit via /rate_limit (telt zelf niet mee voor de limiet, dus bewust zonder cache).
      *
-     * @return array{authMode: string, core: array<string, mixed>}
+     * @return array{authMode: string, core: array<string, mixed>, graphql: ?array<string, mixed>}
      * @throws GitHubApiException
      */
     public function getRateLimit(): array
@@ -193,7 +193,8 @@ final class GitHubClientService
             throw $this->errorFor($status, $sink, (string) $body);
         }
 
-        $core = json_decode((string) $body, true)['resources']['core'] ?? null;
+        $resources = json_decode((string) $body, true)['resources'] ?? [];
+        $core = $resources['core'] ?? null;
         if (!is_array($core)) {
             throw new GitHubApiException(502, 'Onverwachte rate-limit respons');
         }
@@ -205,7 +206,14 @@ final class GitHubClientService
         ];
         $this->lastRateLimit = $rate;
 
-        return ['authMode' => $this->authMode(), 'core' => $rate];
+        $gql = $resources['graphql'] ?? null;
+        $graphql = !is_array($gql) ? null : [
+            'limit' => (int) $gql['limit'],
+            'remaining' => (int) $gql['remaining'],
+            'resetAt' => gmdate('Y-m-d\TH:i:s\Z', (int) $gql['reset']),
+        ];
+
+        return ['authMode' => $this->authMode(), 'core' => $rate, 'graphql' => $graphql];
     }
 
     /**

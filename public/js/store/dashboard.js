@@ -2,13 +2,17 @@ import { reactive, computed, watch } from '../lib/vue.js';
 import { api, ApiError } from '../api.js';
 import { contexts, selected, update as updateContext, setTeamCount } from './contexts.js';
 import { toast } from './ui.js';
+import { KEYS, read, write } from '../util/storage.js';
+import { PERIODS } from '../util/status.js';
 
 /** Dashboarddata van de gekozen klas (GET /contexts/{id}/dashboard). */
 export const dashboard = reactive({
   teams: [],
   generatedAt: null,
-  requests: null,
-  github: null,       // { authMode, rateLimit }
+  period: PERIODS.some(p => p.key === read(KEYS.PERIOD)) ? read(KEYS.PERIOD) : 'all',
+  periodInfo: null,   // { key, from, fallback, sprintStartDate } uit de laatste respons
+  sync: null,         // { synced, fromDb, failed, cost }
+  github: null,       // { authMode, rateLimit, graphql }
   loaded: false,
   loading: false,
   error: '',
@@ -28,10 +32,11 @@ export const kpis = computed(() => {
 
 export function clear() {
   controller?.abort();
-  Object.assign(dashboard, { teams: [], generatedAt: null, requests: null, github: null, loaded: false, loading: false, error: '', refreshingIds: [] });
+  Object.assign(dashboard, { teams: [], generatedAt: null, sync: null, periodInfo: null, github: null, loaded: false, loading: false, error: '', refreshingIds: [] });
 }
 
-export async function load({ force = false } = {}) {
+/** sync=false: alleen uit de database lezen, dus zonder GitHub-calls (periode wisselen, drempel wijzigen). */
+export async function load({ force = false, sync = true } = {}) {
   const id = contexts.selectedId;
   if (!id) return clear();
   controller?.abort();
@@ -39,11 +44,11 @@ export async function load({ force = false } = {}) {
   dashboard.loading = true;
   dashboard.error = '';
   try {
-    const data = await api.contexts.dashboard(id, { force, signal: mine.signal });
+    const data = await api.contexts.dashboard(id, { force, sync, period: dashboard.period, signal: mine.signal });
     if (mine.signal.aborted) return;
-    Object.assign(dashboard, { teams: data.teams, generatedAt: data.generatedAt, requests: data.requests, github: data.github, loaded: true });
+    Object.assign(dashboard, { teams: data.teams, generatedAt: data.generatedAt, sync: data.sync, periodInfo: data.period, github: data.github, loaded: true });
     setTeamCount(id, data.teams.length);
-    if (!data.github?.rateLimit) loadRateLimit();
+    if (!data.github?.graphql) loadRateLimit();
   } catch (err) {
     if (err.name === 'AbortError') return;
     dashboard.error = err instanceof ApiError ? err.message : 'Dashboard laden mislukt';
@@ -52,11 +57,11 @@ export async function load({ force = false } = {}) {
   }
 }
 
-/** Rate limit ophalen als alles uit snapshots kwam (GET /rate_limit telt niet mee voor de limiet). */
+/** Rate limit ophalen als er niet gesynct is (GET /rate_limit telt niet mee voor de limiet). */
 export async function loadRateLimit() {
   try {
-    const { authMode, core } = await api.github.rateLimit();
-    dashboard.github = { authMode, rateLimit: core };
+    const { authMode, core, graphql } = await api.github.rateLimit();
+    dashboard.github = { authMode, rateLimit: core, graphql };
   } catch { /* statusbalk toont dan "niet beschikbaar" */ }
 }
 
@@ -64,9 +69,10 @@ export async function refreshTeam(teamId) {
   if (dashboard.loading || dashboard.refreshingIds.includes(teamId)) return;
   dashboard.refreshingIds.push(teamId);
   try {
-    const res = await api.teams.refresh(teamId);
+    const res = await api.teams.refresh(teamId, dashboard.period);
     replaceTeam(res.team);
     if (res.github) dashboard.github = res.github;
+    if (res.sync) dashboard.sync = res.sync;
   } catch (err) {
     toast(`Verversen mislukt: ${err.message}`, 'bad');
   } finally {
@@ -101,10 +107,18 @@ export function applyStudentUpdate(student) {
   }
 }
 
+/** Periode wisselen: alleen herberekenen uit de database, dit kost geen GitHub-calls. */
+export function setPeriod(key) {
+  if (dashboard.period === key) return;
+  dashboard.period = key;
+  write(KEYS.PERIOD, key);
+  load({ sync: false });
+}
+
 let settingsTimer = null;
 let pendingPatch = {};
 let pendingReload = false;
-/** Drempel/TTL: direct lokaal tonen, na 600 ms opslaan en (voor de drempel) opnieuw laden. */
+/** Drempel/TTL/sprintstart: direct lokaal tonen, na 600 ms opslaan en (indien nodig) opnieuw uit de database laden. */
 export function saveSettings(patch, { reload = false } = {}) {
   const ctx = selected.value;
   if (!ctx) return;
@@ -118,7 +132,7 @@ export function saveSettings(patch, { reload = false } = {}) {
     pendingReload = false;
     try {
       await updateContext(ctx.id, body);
-      if (doReload) await load();
+      if (doReload) await load({ sync: false });
       else toast('Instelling opgeslagen.', 'ok', 2500);
     } catch (err) {
       toast(`Opslaan mislukt: ${err.message}`, 'bad');

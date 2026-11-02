@@ -8,6 +8,7 @@ use App\Http\HttpException;
 use App\Http\JsonResponse;
 use App\Http\Request;
 use App\Http\Validate;
+use App\Services\Dates;
 use App\Services\GitHubIdentifier;
 use App\Services\TeamAnalyticsService;
 use App\Services\TeamService;
@@ -55,7 +56,11 @@ final class TeamController
     /** @return array<string, mixed> */
     public function refresh(Request $request): array
     {
-        return $this->analytics->getTeamDashboardData($request->intParam('id'), true);
+        $period = $request->query['period'] ?? 'all';
+        if (!is_string($period) || !in_array($period, Dates::PERIODS, true)) {
+            throw new HttpException(422, "Parameter 'period' moet all, sprint, 7days of today zijn");
+        }
+        return $this->analytics->getTeamDashboardData($request->intParam('id'), true, $period);
     }
 
     /** @param array<string, mixed> $body */

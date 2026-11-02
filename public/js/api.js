@@ -103,14 +103,15 @@ export const api = {
     list: () => get('contexts'),
     create: body => post('contexts', body),
     update: (id, body) => patch(`contexts/${id}`, body),
-    dashboard: (id, { force = false, signal } = {}) => get(`contexts/${id}/dashboard`, { force: force ? 1 : 0 }, signal),
+    dashboard: (id, { force = false, period = 'all', sync = true, signal } = {}) =>
+      get(`contexts/${id}/dashboard`, { force: force ? 1 : 0, period, sync: sync ? 1 : 0 }, signal),
     importJson: (id, payload, dryRun) => post(`contexts/${id}/import-json`, payload, { dryRun: dryRun ? 1 : 0 }),
   },
   teams: {
     create: body => post('teams', body),
     update: (id, body) => patch(`teams/${id}`, body),
     remove: id => del(`teams/${id}`),
-    refresh: id => post(`teams/${id}/refresh`),
+    refresh: (id, period = 'all') => post(`teams/${id}/refresh`, {}, { period }),
   },
   students: {
     list: (q = '') => get('students', { q }),

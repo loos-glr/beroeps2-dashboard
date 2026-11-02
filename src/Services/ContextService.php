@@ -12,7 +12,7 @@ use PDOException;
 /** CRUD voor academic_contexts (schooljaar + vak + klas). */
 final class ContextService
 {
-    private const COLUMNS = ['school_year', 'course_code', 'class_name', 'inactivity_threshold_days', 'cache_ttl_minutes'];
+    private const COLUMNS = ['school_year', 'course_code', 'class_name', 'inactivity_threshold_days', 'cache_ttl_minutes', 'sprint_start_date'];
 
     /** @param Closure(): PDO $db */
     public function __construct(private readonly Closure $db)
@@ -29,6 +29,7 @@ final class ContextService
             'className' => $row['class_name'],
             'inactivityThresholdDays' => (int) $row['inactivity_threshold_days'],
             'cacheTtlMinutes' => (int) $row['cache_ttl_minutes'],
+            'sprintStartDate' => $row['sprint_start_date'] ?? null,
             'teamCount' => isset($row['team_count']) ? (int) $row['team_count'] : null,
             'createdAt' => Dates::fromDb($row['created_at']),
         ];

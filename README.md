@@ -18,7 +18,8 @@ public/           Document root (Plesk: httpdocs/public)
   js/             Vue-frontend (zie hieronder)
   api/index.php   Centraal JSON API-entrypoint (+ .htaccess rewrite)
 src/              PHP 8.3 classes (namespace App\): Config, Database, Auth, Http, Controllers, Services
-sql/schema.sql    MariaDB-installatiescript
+sql/schema.sql    MariaDB-installatiescript (volledige eindstand)
+sql/migration_step5.sql  Upgrade van een bestaande database naar Stap 5 (idempotent)
 bin/ dev/         CLI-hulpscript (wachtwoordhash) en router voor `php -S`
 .env.example      Configuratiesjabloon (kopieer naar .env)
 ```
@@ -62,6 +63,7 @@ docker compose up -d --build
 
 Poort bezet? Zet `APP_PORT` / `PMA_PORT` in `.env` of de shell.
 `sql/schema.sql` wordt bij de eerste start automatisch geladen. Opnieuw beginnen: `docker compose down -v`.
+Bestaand volume bijwerken: `docker compose exec -T db mariadb -uroot -proot_secret glr_beroeps2 < sql/migration_step5.sql`.
 Standaard inlogwachtwoord: `glr-docent-2026` (overschrijf met `APP_SHARED_PASSWORD`).
 Tests in de container: `docker compose exec -T app php tests/merge_test.php` en `... tests/import_test.php`.
 
@@ -77,7 +79,7 @@ php -S localhost:8000 -t public dev/router.php
 ## Backend & Plesk-installatie
 
 1. Domein op **PHP 8.3** zetten; document root → `httpdocs/public`, repo in `httpdocs`.
-2. MariaDB-database + gebruiker aanmaken en `sql/schema.sql` importeren (phpMyAdmin).
+2. MariaDB-database + gebruiker aanmaken en `sql/schema.sql` importeren (phpMyAdmin). Bestaande installatie? Importeer `sql/migration_step5.sql`.
 3. `.env.example` kopiëren naar `.env` (buiten de document root) en invullen:
    DB-gegevens, `GITHUB_TOKEN`, `TEACHER_GITHUB_USERNAME`, `APP_SHARED_PASSWORD`.
 4. Eerste docent (optioneel): `php bin/hash-password.php` en de INSERT uit `schema.sql` gebruiken.
@@ -91,18 +93,19 @@ header `X-CSRF-Token`. Microsoft SSO: `AuthService::handleMicrosoftCallback()` i
 | Route | Doel |
 | --- | --- |
 | `GET /health`, `GET /auth/me`, `POST /auth/login` (`{email?, password}`), `POST /auth/logout` | Status en sessie |
-| `GET /contexts`, `POST /contexts`, `PATCH /contexts/{id}` | Klassen (schooljaar + vak + klas), drempel en cache-TTL |
+| `GET /contexts`, `POST /contexts`, `PATCH /contexts/{id}` | Klassen (schooljaar + vak + klas), drempel, cache-TTL en `sprintStartDate` |
 | `POST /contexts/{id}/import-json?dryRun=0\|1` | POC-export (`teams` + `aliases`, v1 of v2) idempotent importeren; `dryRun=1` rolt terug |
-| `GET /contexts/{id}/dashboard?force=0\|1` | Alle teams, studenten en KPI's van een klas |
-| `POST /teams`, `PATCH /teams/{id}`, `DELETE /teams/{id}`, `POST /teams/{id}/refresh` | Teams en verwachte leden |
+| `GET /contexts/{id}/dashboard?force=0\|1&period=all\|sprint\|7days\|today&sync=0\|1` | Alle teams, studenten en KPI's van een klas. `sync=0` rekent alleen uit de database (geen GitHub-calls) |
+| `POST /teams`, `PATCH /teams/{id}`, `DELETE /teams/{id}`, `POST /teams/{id}/refresh?period=` | Teams en verwachte leden |
 | `GET /students?q=`, `POST /students/identity`, `DELETE /students/{id}` | Studentnamen en gekoppelde GitHub-accounts (`handles` = volledige set) |
 | `GET /github/rate-limit`, `GET /github/collaborator-repos?contextId=` | GitHub-status en repo-ontdekking |
 
 GitHub-token: `GITHUB_TOKEN` uit `.env`; is die leeg dan wordt de request-header `X-GitHub-Token`
-gebruikt, anders werkt de API anoniem (60 requests/uur, geen collaborators).
+gebruikt. De GraphQL-sync **vereist een token**; zonder token tonen teams "GraphQL vereist een GitHub-token".
 
-Tests (geen DB nodig): `php tests/merge_test.php` (samenvoegen, statusregels, snapshot-filters) en
-`php tests/import_test.php` (parsen van het JSON-importbestand).
+Tests (geen DB nodig): `php tests/merge_test.php` (accounts, periode-filter, samenvoegen, statusregels),
+`php tests/import_test.php` (parsen van het JSON-importbestand) en `php tests/sync_test.php`
+(GraphQL-parsing incl. lege repository, periodegrenzen in Europe/Amsterdam).
 
 ## Token instellen
 
@@ -111,14 +114,26 @@ Heeft de server geen eigen token, dan kan een docent via **Token** in het dashbo
 fallback-token instellen; dat blijft in `localStorage` van die browser en gaat als `X-GitHub-Token`
 naar de eigen server. Publieke repo's werken ook anoniem, maar dan ontbreken studenten met 0 commits.
 
-## Caching
+## Synchronisatie en periode-filter
 
-- **Laag 1:** `team_snapshots` met TTL = `academic_contexts.cache_ttl_minutes` (instelbaar per klas).
-- **Laag 2:** `github_http_cache` (ETag/`304 Not Modified`, telt niet mee voor de GitHub rate limit).
-- Studentnamen en koppelingen worden bij elke dashboard-request live over de snapshot gelegd, dus
-  wijzigingen kosten geen GitHub-calls. **Data verversen** (`force=1`) revalideert alle teams,
-  het verversicoon op een teamkaart doet dat voor één team.
-- De oude browser-cache (`glr_beroeps2_etag_v1:*`, `glr_beroeps2_team_cache_v1`) wordt bij het opstarten opgeruimd.
+Er zijn geen webhooks of cronjobs: de sync gebeurt tijdens een dashboard-request, per team zodra de
+cache-TTL (`academic_contexts.cache_ttl_minutes`) is verlopen.
+
+- **Eén GraphQL-call per team** (`GitHubGraphQLService`, `POST https://api.github.com/graphql`, meestal 1 punt):
+  `pushedAt`, aantal branches, de nieuwste commits op de default branch, de laatste 50 PR's en 50 issues.
+- **Incrementeel:** commits worden opgehaald vanaf de nieuwste opgeslagen commit min 30 dagen (zodat commits van
+  langlopende featurebranches niet worden gemist); PR's en issues zijn gesorteerd op `UPDATED_AT`. Alles wordt met
+  `INSERT … ON DUPLICATE KEY UPDATE` opgeslagen in `repo_commits`, `repo_pull_requests` en `repo_issues`.
+- **Collaborators** worden hooguit 1× per 24 uur (of bij `force=1`) opgehaald en staan in `repo_collaborators`.
+  Heeft het token daar geen rechten voor, dan toont het team een melding en werkt de rest gewoon.
+- **Periode** (`period=all|sprint|7days|today`) wordt volledig in SQL berekend; wisselen kost dus geen GitHub-calls.
+  "Vandaag" en "Sprint" gebruiken de dagwisseling van Europe/Amsterdam. Commits, PR's en aangemaakte issues volgen het
+  filter; assigned issues (open/closed) en de **status** (groen/oranje/rood) baseren zich altijd op alle activiteit.
+- De toolbar toont de GraphQL-limiet en hoeveel punten de laatste sync kostte. **Data verversen** (`force=1`)
+  synct alle teams opnieuw, het verversicoon op een teamkaart doet dat voor één team.
+- Studentnamen en koppelingen worden bij elke dashboard-request live over de data gelegd, dus
+  wijzigingen kosten geen GitHub-calls.
+- `github_http_cache` (ETag) wordt nog gebruikt voor de repo-ontdekking (`/user/repos`).
 
 ## Migratie vanuit het oude dashboard
 

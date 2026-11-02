@@ -90,8 +90,14 @@ final class TeamService
             }
             if (isset($fields['repoFullName']) && $fields['repoFullName'] !== $oldRepo) {
                 $pdo->prepare('UPDATE teams SET repo_full_name = :r WHERE id = :id')->execute(['r' => $fields['repoFullName'], 'id' => $id]);
-                // Een snapshot van de oude repo mag niet blijven staan
-                $pdo->prepare('DELETE FROM team_snapshots WHERE team_id = :id')->execute(['id' => $id]);
+                // Gesyncte data van de oude repo mag niet blijven staan
+                foreach (['repo_commits', 'repo_pull_requests', 'repo_issues', 'repo_collaborators'] as $table) {
+                    $pdo->prepare("DELETE FROM {$table} WHERE team_id = :id")->execute(['id' => $id]);
+                }
+                $pdo->prepare(
+                    'UPDATE teams SET last_synced_at = NULL, last_repo_pushed_at = NULL, collaborators_synced_at = NULL,
+                       collaborators_detected = NULL, branch_count = 0, last_sync_cost = NULL WHERE id = :id'
+                )->execute(['id' => $id]);
             }
             if (isset($fields['expectedMembers'])) {
                 $this->replaceExpected($id, $fields['expectedMembers']);
@@ -117,7 +123,7 @@ final class TeamService
         if ($repo === false) {
             throw new HttpException(404, 'Team niet gevonden');
         }
-        // FK-cascade ruimt snapshot en verwachte leden op
+        // FK-cascade ruimt de gesyncte data en verwachte leden op
         $pdo->prepare('DELETE FROM teams WHERE id = :id')->execute(['id' => $id]);
         $this->forgetIfUnused((string) $repo);
     }

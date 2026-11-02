@@ -7,8 +7,6 @@ import CacheBadge from './CacheBadge.js';
 import Icon from './ui/Icon.js';
 import ExtLink from './ui/ExtLink.js';
 
-const ENDPOINT_LABELS = { commits: 'commits', pulls: "pull requests", issues: 'issues', branches: 'branches' };
-
 function HealthBar(counts, total) {
   if (!total) return null;
   const seg = (key, cls) => counts[key] ? html`<i class=${cls} style=${{ width: `${(counts[key] / total) * 100}%` }}></i>` : null;
@@ -42,11 +40,8 @@ export default {
       const members = ui.onlyAttention ? t.members.filter(m => m.status.level !== 'green') : t.members;
       if (ui.onlyAttention && members.length === 0) return null;
 
-      const trunc = Object.entries(t.truncated ?? {}).filter(([, v]) => v).map(([k]) => ENDPOINT_LABELS[k] ?? k);
       const notes = [];
       if (t.collaboratorsDetected === false) notes.push('Alleen committers zichtbaar; er is geen token met collaborator-rechten (studenten met 0 commits ontbreken).');
-      if (trunc.length) notes.push(`Meer dan 100 ${trunc.join(', ')}: alleen de nieuwste 100 zijn geteld.`);
-      (t.warnings ?? []).forEach(w => notes.push(`Kon ${ENDPOINT_LABELS[w.endpoint] ?? w.endpoint} niet ophalen (status ${w.status}).`));
 
       const url = repoUrl(t.repo);
       const tot = t.totals ?? {};

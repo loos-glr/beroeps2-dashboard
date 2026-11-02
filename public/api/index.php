@@ -15,6 +15,7 @@ use App\Http\Request;
 use App\Http\Router;
 use App\Services\ContextService;
 use App\Services\GitHubClientService;
+use App\Services\GitHubGraphQLService;
 use App\Services\MigrationService;
 use App\Services\StudentIdentityService;
 use App\Services\TeamAnalyticsService;
@@ -33,7 +34,8 @@ $health = new HealthController();
 
 $github = new GitHubClientService($db, $config, $request->header('X-GitHub-Token'));
 $contexts = new ContextService($db);
-$analytics = new TeamAnalyticsService($db, $github, $config);
+$graphql = new GitHubGraphQLService($db, $github, $config);
+$analytics = new TeamAnalyticsService($db, $github, $graphql, $config);
 $contextController = new ContextController($contexts, $analytics, new MigrationService($db));
 $teamController = new TeamController(new TeamService($db, $github), $analytics);
 $studentController = new StudentController(new StudentIdentityService($db));

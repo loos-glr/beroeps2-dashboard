@@ -30,6 +30,7 @@ jobs:
         run: |
           php tests/merge_test.php
           php tests/import_test.php
+          php tests/sync_test.php
 
       - name: JS syntax
         run: find public/js -name '*.js' -not -path 'public/js/vendor/*' -print0 | xargs -0 -n1 node --check

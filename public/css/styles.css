@@ -97,7 +97,7 @@ svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none;
   background: var(--surface); border: 1px solid var(--border-strong); border-radius: 6px;
   font-family: var(--mono); font-size: 13px;
 }
-.field select {
+.field input[type=date], .field select {
   min-height: 30px; padding: 0 8px;
   background: var(--surface); border: 1px solid var(--border-strong); border-radius: 6px;
   font-family: var(--mono); font-size: 13px;

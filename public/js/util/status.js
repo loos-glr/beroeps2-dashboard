@@ -7,6 +7,16 @@ export const LEVELS = {
 
 export const levelOf = level => LEVELS[level] ?? LEVELS.red;
 
+/** Periode-filter van het dashboard (zelfde sleutels als ?period= van de API). */
+export const PERIODS = [
+  { key: 'all', label: 'Alles' },
+  { key: 'sprint', label: 'Sprint' },
+  { key: '7days', label: '7 dagen' },
+  { key: 'today', label: 'Vandaag' },
+];
+
+export const periodLabel = key => PERIODS.find(p => p.key === key)?.label ?? 'Alles';
+
 /** cacheStatus van een team → badge-weergave. */
 export const CACHE_BADGES = {
   fresh: { cls: 'muted', icon: 'shield', label: 'Uit cache' },
