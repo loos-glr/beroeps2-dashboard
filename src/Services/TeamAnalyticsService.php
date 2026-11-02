@@ -176,6 +176,7 @@ final class TeamAnalyticsService
                 'id' => $id,
                 'teamName' => $row['team_name'],
                 'repo' => $row['repo_full_name'],
+                'expectedMembers' => $expected[$id] ?? [],
                 'fetchedAt' => Dates::fromDb($state['fetchedAt']),
                 'cacheStatus' => $state['status'],
                 'error' => $state['error'],

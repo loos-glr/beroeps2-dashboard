@@ -384,3 +384,6 @@ label.lbl { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 
 .form-actions { display: flex; justify-content: center; }
 .placeholder.welcome { max-width: 640px; }
 @media (max-width: 640px) { .form-row, .form-row.two { grid-template-columns: 1fr; } }
+.note-flag { display: inline-flex; color: var(--text-faint); }
+.note-flag svg.i { width: 13px; height: 13px; }
+.btn.spin svg { animation: spin .8s linear infinite; }
