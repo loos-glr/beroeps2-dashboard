@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: PHP syntax
+        run: find src public/api bin tests -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: PHP tests
+        run: |
+          php tests/merge_test.php
+          php tests/import_test.php
+
+      - name: JS syntax
+        run: find public/js -name '*.js' -not -path 'public/js/vendor/*' -print0 | xargs -0 -n1 node --check
+
+      - name: Frontend guards (CSP-veilig, geen eval)
+        run: |
+          if grep -rnE 'innerHTML|outerHTML|v-html|eval\(|new Function|style="' public/js --include='*.js' --exclude-dir=vendor; then
+            echo "Verboden patroon in frontend (zie hierboven)"; exit 1
+          fi
+          test "$(grep -c 'new Function' public/js/vendor/vue.runtime.esm-browser.prod.js)" = "0"

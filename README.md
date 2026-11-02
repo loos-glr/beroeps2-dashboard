@@ -4,15 +4,18 @@ Formatief dashboard voor het BEROEPS2-traject (Grafisch Lyceum Rotterdam). Het
 dashboard leest publieke GitHub-activiteit (commits, pull requests, issues) van
 de geconfigureerde teamrepo's en toont per student een status.
 
-In de huidige frontend blijft alle configuratie (teams, studentnamen, token) **lokaal in de browser**
-(localStorage). Er staan geen studenten, repo's of tokens in de code.
+De frontend is een **Vue 3-app (Composition API)** zonder buildstap: native ES-modules, de Vue
+*runtime*-build en [htm](https://github.com/developit/htm) voor JSX-achtige templates. Alle data komt
+uit de PHP/MariaDB-API; in de browser staat alleen een voorkeur (laatst gekozen klas, "alleen aandacht")
+en optioneel een persoonlijk GitHub-fallbacktoken. Er staan geen studenten, repo's of tokens in de code.
 
 ## Structuur
 
 ```
 public/           Document root (Plesk: httpdocs/public)
-  index.html      Markup en modals (geen inline CSS/JS)
-  css/ js/ assets/  Frontend (ES-modules, zie hieronder)
+  index.html      Alleen <head> + #app, met meta-CSP (geen inline script/style)
+  css/ assets/    Stijlen en SVG-iconen
+  js/             Vue-frontend (zie hieronder)
   api/index.php   Centraal JSON API-entrypoint (+ .htaccess rewrite)
 src/              PHP 8.3 classes (namespace App\): Config, Database, Auth, Http, Controllers, Services
 sql/schema.sql    MariaDB-installatiescript
@@ -20,38 +23,38 @@ bin/ dev/         CLI-hulpscript (wachtwoordhash) en router voor `php -S`
 .env.example      Configuratiesjabloon (kopieer naar .env)
 ```
 
-De frontend werkt voorlopig nog volledig client-side (localStorage); de
-backend levert database, login-sessie en de GitHub/dashboard-API (Stap 1 en 2).
+## Frontend (`public/js/`)
 
-Frontend-modules (`public/js/`):
-
-| Module | Verantwoordelijkheid |
+| Pad | Verantwoordelijkheid |
 | --- | --- |
-| `js/main.js` | Bootstrap, gedelegeerde events (`data-action`), laadlogica |
-| `js/state.js` | Gedeelde app-state + render/reload-hooks |
-| `js/cache.js` | Tweelaagse cache: teamdata met TTL + ETag/body per API-URL |
-| `js/storage.js` | localStorage-sleutels, token en docentnaam |
-| `js/utils.js` | Pure helpers: escaping, datums, iconen, templatefragmenten |
-| `js/teams.js` | Teams beheren, teamnaam-modal, JSON import/export |
-| `js/aliases.js` | Studentnamen koppelen en accounts ontdubbelen |
-| `js/github.js` | GitHub API: rate limit, teamdata, collaborator-repo's |
-| `js/analysis.js` | Profielen samenvoegen, totalen, statusbepaling |
-| `js/dashboard.js` | KPI's, teamkaarten en studentrijen renderen |
-| `js/detail.js` | Student-detailmodal (drill-down) |
-| `js/modals.js` | Tokenmodal, overlay- en Escape-afhandeling |
+| `main.js` | `createApp(App).mount('#app')` |
+| `lib/vue.js` | Enige importpunt voor Vue en `html` (htm gebonden aan `h`) |
+| `vendor/` | Vue-runtime en htm, lokaal en vastgepind (zie `vendor/README.md`) |
+| `api.js` | API-client: cookies, `X-CSRF-Token`, optioneel `X-GitHub-Token`, centrale 401 |
+| `store/` | `session` (login), `contexts` (schooljaar/vak/klas), `dashboard` (teams, KPI's), `ui` (toasts, modal) |
+| `util/` | Datums, statusmapping, veilige GitHub-links, localStorage, download |
+| `components/` | `App`, `LoginView`, `ContextBar`, `DashboardView`, `TeamCard`, `StudentRow`, `StudentDetail`, modals, `manage/*` |
+
+Conventies (voor wie React kent):
+
+- Elk component is `{ props, emits, setup() { return () => html\`…\` } }`; state zit in `ref`/`computed`/`reactive`.
+- `v-if` → `${cond ? html\`…\` : null}`, `v-for` → `${list.map(x => html\`<${C} key=${x.id} />\`)}`,
+  `v-model` → `value=${v.value} onInput=${e => v.value = e.target.value}`, events als `onClick=${fn}`.
+- State is een module-singleton (`reactive()`) met exporteerde acties; componenten muteren alleen via die acties.
+- **Nooit** `innerHTML`/`v-html` of inline `style="…"`: de CSP (`script-src 'self'`, geen `unsafe-eval`) staat dat niet toe
+  en CI controleert het. Dynamische breedtes lopen via `style=${{ width }}` (CSSOM).
+- Externe links gaan via `ExtLink` (alleen `https://github.com/`).
 
 ## Lokaal draaien
 
 ES-modules werken niet via `file://`. Start de PHP-server vanuit de projectmap
-(het router-script zorgt dat `/api/...` zonder Apache werkt):
+(het router-script zorgt dat `/api/...` zonder Apache werkt). De frontend heeft de API en een database nodig:
 
 ```bash
 cp .env.example .env   # alleen nodig voor de API
 php -S localhost:8000 -t public dev/router.php
 # dashboard: http://localhost:8000  ·  API: http://localhost:8000/api/health
 ```
-
-Alleen de frontend: `python3 -m http.server 8000 -d public`.
 
 ## Backend & Plesk-installatie
 
@@ -85,32 +88,30 @@ Tests (geen DB nodig): `php tests/merge_test.php` (samenvoegen, statusregels, sn
 
 ## Token instellen
 
-1. Maak een fine-grained personal access token aan met alleen leesrechten op de
-   teamrepo's (publieke repo's werken ook zonder token, maar dan zijn
-   studenten met 0 commits niet zichtbaar).
-2. Open het dashboard → **Token** → plak het token en eventueel je eigen
-   GitHub-gebruikersnaam (die wordt uit de lijst gefilterd).
-3. Het token wordt alleen in `localStorage` van jouw browser bewaard.
+Voorkeur: `GITHUB_TOKEN` in `.env` (fine-grained PAT met alleen leesrechten op de teamrepo's).
+Heeft de server geen eigen token, dan kan een docent via **Token** in het dashboard een persoonlijk
+fallback-token instellen; dat blijft in `localStorage` van die browser en gaat als `X-GitHub-Token`
+naar de eigen server. Publieke repo's werken ook anoniem, maar dan ontbreken studenten met 0 commits.
 
 ## Caching
 
-- **Server (Stap 2):** Laag 1 is `team_snapshots` (TTL = `academic_contexts.cache_ttl_minutes`),
-  Laag 2 is `github_http_cache` (ETag/`304`). Studentnamen en koppelingen worden bij elke
-  dashboard-request live over de snapshot gelegd. De beschrijving hieronder geldt voor de
-  huidige client-side frontend.
-- **Laag 1:** de ruwe teamdata wordt per repo in `localStorage` bewaard en
-  gebruikt zolang die jonger is dan de TTL (keuzelijst in de toolbar,
-  standaard 10 min, `0` = altijd live). Studentnamen en samengevoegde accounts
-  worden altijd opnieuw toegepast, dus wijzigingen zijn direct zichtbaar.
-- **Laag 2:** verlopen of geforceerde loads sturen `If-None-Match` mee. Een
-  `304 Not Modified` telt niet mee voor de GitHub rate limit.
-- **Data verversen** forceert een controle bij GitHub voor alle teams; het
-  verversicoon op een teamkaart doet dat voor één team. **Cache legen** wist
-  alles. Bij het wissen van het token wordt de cache ook geleegd.
-- Bij een vol opslagquotum worden automatisch de oudste cache-entries opgeruimd.
+- **Laag 1:** `team_snapshots` met TTL = `academic_contexts.cache_ttl_minutes` (instelbaar per klas).
+- **Laag 2:** `github_http_cache` (ETag/`304 Not Modified`, telt niet mee voor de GitHub rate limit).
+- Studentnamen en koppelingen worden bij elke dashboard-request live over de snapshot gelegd, dus
+  wijzigingen kosten geen GitHub-calls. **Data verversen** (`force=1`) revalideert alle teams,
+  het verversicoon op een teamkaart doet dat voor één team.
+- De oude browser-cache (`glr_beroeps2_etag_v1:*`, `glr_beroeps2_team_cache_v1`) wordt bij het opstarten opgeruimd.
 
-## Deploy
+## Migratie vanuit het oude dashboard
 
-Elke push naar `main` deployt via GitHub Actions naar GitHub Pages
-(`.github/workflows/deploy.yml`). De workflow kopieert de frontend uit `public/`
-(zonder `api/`) naar `_site/`.
+Bevat de browser nog POC-gegevens (`glr_beroeps2_teams_v1` / `glr_beroeps2_student_aliases_v1`), dan biedt
+het dashboard aan die in de gekozen klas te importeren (eerst een preview met `dryRun=1`). Een `.json`-export
+van het oude dashboard kan via **Beheer → Import & Export**. Daar staat ook **Exporteer huidige klas**
+(zelfde v2-formaat, dus weer importeerbaar).
+
+## Deploy en CI
+
+Deploy gaat via Plesk (zie *Backend & Plesk-installatie*); de frontend heeft geen buildstap, dus
+het kopiëren van `public/` volstaat. GitHub Actions (`.github/workflows/ci.yml`) draait op elke push/PR:
+`php -l`, de PHP-tests, `node --check` en een guard tegen `innerHTML`, `eval` en inline styles.
+GitHub Pages wordt niet meer gebruikt: de frontend werkt niet zonder de PHP-API.
