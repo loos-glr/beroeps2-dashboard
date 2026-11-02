@@ -4,17 +4,26 @@ Formatief dashboard voor het BEROEPS2-traject (Grafisch Lyceum Rotterdam). Het
 dashboard leest publieke GitHub-activiteit (commits, pull requests, issues) van
 de geconfigureerde teamrepo's en toont per student een status.
 
-Alle configuratie (teams, studentnamen, token) blijft **lokaal in de browser**
+In de huidige frontend blijft alle configuratie (teams, studentnamen, token) **lokaal in de browser**
 (localStorage). Er staan geen studenten, repo's of tokens in de code.
 
 ## Structuur
 
 ```
-index.html        Markup en modals (geen inline CSS/JS)
-css/styles.css    Volledige stylesheet (design tokens + componenten)
-assets/icons.svg  SVG-sprite met alle iconen
-js/               ES-modules, zie hieronder
+public/           Document root (Plesk: httpdocs/public)
+  index.html      Markup en modals (geen inline CSS/JS)
+  css/ js/ assets/  Frontend (ES-modules, zie hieronder)
+  api/index.php   Centraal JSON API-entrypoint (+ .htaccess rewrite)
+src/              PHP 8.3 classes (namespace App\): Config, Database, Auth, Http, Controllers, Services
+sql/schema.sql    MariaDB-installatiescript
+bin/ dev/         CLI-hulpscript (wachtwoordhash) en router voor `php -S`
+.env.example      Configuratiesjabloon (kopieer naar .env)
 ```
+
+De frontend werkt voorlopig nog volledig client-side (localStorage); de
+backend (Stap 1) levert database, login-sessie en API-skelet.
+
+Frontend-modules (`public/js/`):
 
 | Module | Verantwoordelijkheid |
 | --- | --- |
@@ -33,19 +42,32 @@ js/               ES-modules, zie hieronder
 
 ## Lokaal draaien
 
-De app gebruikt ES-modules; die werken niet via `file://`. Start daarom een
-lokale server vanuit de projectmap:
+ES-modules werken niet via `file://`. Start de PHP-server vanuit de projectmap
+(het router-script zorgt dat `/api/...` zonder Apache werkt):
 
 ```bash
-python3 -m http.server 8000
-# open http://localhost:8000
+cp .env.example .env   # alleen nodig voor de API
+php -S localhost:8000 -t public dev/router.php
+# dashboard: http://localhost:8000  ·  API: http://localhost:8000/api/health
 ```
 
-Of met Node:
+Alleen de frontend: `python3 -m http.server 8000 -d public`.
 
-```bash
-npx serve .
-```
+## Backend & Plesk-installatie
+
+1. Domein op **PHP 8.3** zetten; document root → `httpdocs/public`, repo in `httpdocs`.
+2. MariaDB-database + gebruiker aanmaken en `sql/schema.sql` importeren (phpMyAdmin).
+3. `.env.example` kopiëren naar `.env` (buiten de document root) en invullen:
+   DB-gegevens, `GITHUB_TOKEN`, `TEACHER_GITHUB_USERNAME`, `APP_SHARED_PASSWORD`.
+4. Eerste docent (optioneel): `php bin/hash-password.php` en de INSERT uit `schema.sql` gebruiken.
+   Zonder docent kan ingelogd worden met het gedeelde wachtwoord (laat e-mail leeg).
+5. Alleen nginx (zonder Apache)? Voeg toe aan de extra nginx-directives:
+   `location /api/ { try_files $uri /api/index.php$is_args$args; }`
+
+API (JSON): `GET /api/health`, `GET /api/auth/me`, `POST /api/auth/login`
+(`{email?, password}`), `POST /api/auth/logout`. Niet-publieke routes vereisen een
+sessie en, bij POST/PUT/DELETE, de header `X-CSRF-Token`. Microsoft SSO:
+`AuthService::handleMicrosoftCallback()` is een placeholder (501).
 
 ## Token instellen
 
@@ -72,5 +94,5 @@ npx serve .
 ## Deploy
 
 Elke push naar `main` deployt via GitHub Actions naar GitHub Pages
-(`.github/workflows/deploy.yml`). De workflow kopieert `index.html`, `css/`,
-`js/` en `assets/` naar `_site/`.
+(`.github/workflows/deploy.yml`). De workflow kopieert de frontend uit `public/`
+(zonder `api/`) naar `_site/`.

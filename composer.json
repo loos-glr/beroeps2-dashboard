@@ -1,0 +1,13 @@
+{
+  "name": "glr/beroeps2-dashboard",
+  "description": "GLR BEROEPS2 GitHub Flow Formatief Dashboard",
+  "type": "project",
+  "require": {
+    "php": ">=8.3"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "src/"
+    }
+  }
+}
