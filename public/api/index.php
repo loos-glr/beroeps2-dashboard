@@ -15,6 +15,7 @@ use App\Http\Request;
 use App\Http\Router;
 use App\Services\ContextService;
 use App\Services\GitHubClientService;
+use App\Services\MigrationService;
 use App\Services\StudentIdentityService;
 use App\Services\TeamAnalyticsService;
 use App\Services\TeamService;
@@ -33,7 +34,7 @@ $health = new HealthController();
 $github = new GitHubClientService($db, $config, $request->header('X-GitHub-Token'));
 $contexts = new ContextService($db);
 $analytics = new TeamAnalyticsService($db, $github, $config);
-$contextController = new ContextController($contexts, $analytics);
+$contextController = new ContextController($contexts, $analytics, new MigrationService($db));
 $teamController = new TeamController(new TeamService($db, $github), $analytics);
 $studentController = new StudentController(new StudentIdentityService($db));
 $githubController = new GitHubController($github, $db);
@@ -49,6 +50,7 @@ $router->add('GET', '/auth/microsoft/callback', fn (Request $r) => $authControll
 $router->add('GET', '/contexts', fn () => $contextController->index());
 $router->add('POST', '/contexts', fn (Request $r) => $contextController->store($r));
 $router->add('PATCH', '/contexts/{id}', fn (Request $r) => $contextController->update($r));
+$router->add('POST', '/contexts/{id}/import-json', fn (Request $r) => $contextController->importJson($r));
 $router->add('GET', '/contexts/{id}/dashboard', fn (Request $r) => $contextController->dashboard($r));
 
 $router->add('POST', '/teams', fn (Request $r) => $teamController->store($r));

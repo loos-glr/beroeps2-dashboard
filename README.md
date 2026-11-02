@@ -71,6 +71,7 @@ header `X-CSRF-Token`. Microsoft SSO: `AuthService::handleMicrosoftCallback()` i
 | --- | --- |
 | `GET /health`, `GET /auth/me`, `POST /auth/login` (`{email?, password}`), `POST /auth/logout` | Status en sessie |
 | `GET /contexts`, `POST /contexts`, `PATCH /contexts/{id}` | Klassen (schooljaar + vak + klas), drempel en cache-TTL |
+| `POST /contexts/{id}/import-json?dryRun=0\|1` | POC-export (`teams` + `aliases`, v1 of v2) idempotent importeren; `dryRun=1` rolt terug |
 | `GET /contexts/{id}/dashboard?force=0\|1` | Alle teams, studenten en KPI's van een klas |
 | `POST /teams`, `PATCH /teams/{id}`, `DELETE /teams/{id}`, `POST /teams/{id}/refresh` | Teams en verwachte leden |
 | `GET /students?q=`, `POST /students/identity`, `DELETE /students/{id}` | Studentnamen en gekoppelde GitHub-accounts (`handles` = volledige set) |
@@ -79,7 +80,8 @@ header `X-CSRF-Token`. Microsoft SSO: `AuthService::handleMicrosoftCallback()` i
 GitHub-token: `GITHUB_TOKEN` uit `.env`; is die leeg dan wordt de request-header `X-GitHub-Token`
 gebruikt, anders werkt de API anoniem (60 requests/uur, geen collaborators).
 
-Tests: `php tests/merge_test.php` (samenvoegen, statusregels, snapshot-filters; geen DB nodig).
+Tests (geen DB nodig): `php tests/merge_test.php` (samenvoegen, statusregels, snapshot-filters) en
+`php tests/import_test.php` (parsen van het JSON-importbestand).
 
 ## Token instellen
 

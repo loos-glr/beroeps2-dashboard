@@ -75,6 +75,11 @@ final class Request
         return (int) $raw;
     }
 
+    public function bodyBytes(): int
+    {
+        return strlen($this->rawBody);
+    }
+
     public function header(string $name): ?string
     {
         return $this->headers[strtolower($name)] ?? null;

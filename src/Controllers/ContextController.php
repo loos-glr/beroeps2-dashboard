@@ -9,6 +9,7 @@ use App\Http\JsonResponse;
 use App\Http\Request;
 use App\Http\Validate;
 use App\Services\ContextService;
+use App\Services\MigrationService;
 use App\Services\TeamAnalyticsService;
 
 final class ContextController
@@ -16,6 +17,7 @@ final class ContextController
     public function __construct(
         private readonly ContextService $contexts,
         private readonly TeamAnalyticsService $analytics,
+        private readonly MigrationService $migration,
     ) {
     }
 
@@ -46,6 +48,20 @@ final class ContextController
             throw new HttpException(422, "Parameter 'force' moet 0 of 1 zijn");
         }
         return $this->analytics->getContextDashboardData($request->intParam('id'), $force === '1');
+    }
+
+    /** @return array<string, mixed> */
+    public function importJson(Request $request): array
+    {
+        $dryRun = $request->query['dryRun'] ?? '0';
+        if ($dryRun !== '0' && $dryRun !== '1') {
+            throw new HttpException(422, "Parameter 'dryRun' moet 0 of 1 zijn");
+        }
+        if ($request->bodyBytes() > MigrationService::MAX_BODY_BYTES) {
+            throw new HttpException(413, 'Importbestand is te groot (max 1 MiB)');
+        }
+        $plan = MigrationService::parse($request->json());
+        return $this->migration->import($request->intParam('id'), $plan, $dryRun === '1');
     }
 
     /**
