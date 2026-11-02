@@ -422,3 +422,42 @@ label.lbl { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 
 .warn-list { padding: 10px 12px; border-radius: 8px; background: var(--warn-soft); color: var(--warn); font-size: 12.5px; }
 .warn-list ul { margin: 6px 0 0; padding-left: 18px; }
 @media (max-width: 640px) { .tabs { padding: 0 12px; overflow-x: auto; } }
+
+/* ===== Stap 6: periode-knoppen, achtergrond-sync, lesronde en logboek ===== */
+.segmented { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.segmented button {
+  min-height: 30px; padding: 0 12px; border: 0; border-right: 1px solid var(--border-strong);
+  background: transparent; color: var(--text-muted); font: inherit; font-size: 12.5px; cursor: pointer;
+}
+.segmented button:last-child { border-right: 0; }
+.segmented button:hover { background: var(--surface-2); color: var(--text); }
+.segmented button[aria-pressed=true] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.segmented button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.field.highlight { padding: 3px 8px; border-radius: 8px; background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent); }
+.sync-progress { color: var(--accent); font-weight: 500; }
+.sync-progress svg { animation: spin .8s linear infinite; }
+
+.visit-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px; margin-bottom: 14px; }
+.visit-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.visit-panel-head h2 { font-size: 15px; margin: 0; }
+.visit-section { margin-top: 12px; }
+.visit-section h3 { font-size: 13px; margin: 0 0 6px; display: flex; align-items: center; gap: 8px; }
+.visit-list, .visit-notes, .log-list { list-style: none; margin: 0; padding: 0; }
+.visit-item { padding: 8px 0; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.visit-main { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-right: auto; }
+.visit-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.visit-notes { flex-basis: 100%; font-size: 12px; color: var(--text-muted); }
+.visit-form { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; }
+.visit-form .textarea { flex: 1 1 260px; }
+.visit-done { margin-top: 12px; font-size: 13px; }
+.visit-done summary { cursor: pointer; color: var(--text-muted); }
+
+.coaching-log { margin-top: 18px; }
+.log-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; margin-bottom: 10px; }
+.log-form .textarea { flex: 1 1 300px; }
+.log-item { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--border); }
+.log-item.resolved .log-text { color: var(--text-muted); text-decoration: line-through; }
+.log-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 12px; color: var(--text-muted); }
+.log-text { white-space: pre-wrap; margin-top: 2px; }
+.log-actions { display: flex; align-items: center; gap: 10px; font-size: 12px; flex-shrink: 0; }
+.switch-inline { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }

@@ -2,6 +2,7 @@ import { html } from '../lib/vue.js';
 import { dashboard } from '../store/dashboard.js';
 import { ui } from '../store/ui.js';
 import StatusToolbar from './StatusToolbar.js';
+import VisitQueuePanel from './VisitQueuePanel.js';
 import KpiStrip from './KpiStrip.js';
 import Legend from './Legend.js';
 import TeamCard from './TeamCard.js';
@@ -26,6 +27,7 @@ export default {
       return html`
         <div class="wrap" aria-busy=${dashboard.loading ? 'true' : 'false'}>
           <${StatusToolbar} />
+          <${VisitQueuePanel} />
           <${KpiStrip} />
           <${Legend} />
           ${dashboard.error && dashboard.loaded ? html`<p class="msg-bad" role="alert">${dashboard.error}</p>` : null}

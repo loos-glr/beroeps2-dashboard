@@ -89,7 +89,7 @@ export async function request(path, { method = 'GET', body, query, signal } = {}
 }
 
 const get = (path, query, signal) => request(path, { query, signal });
-const post = (path, body, query) => request(path, { method: 'POST', body: body ?? {}, query });
+const post = (path, body, query, signal) => request(path, { method: 'POST', body: body ?? {}, query, signal });
 const patch = (path, body) => request(path, { method: 'PATCH', body });
 const del = path => request(path, { method: 'DELETE' });
 
@@ -103,7 +103,7 @@ export const api = {
     list: () => get('contexts'),
     create: body => post('contexts', body),
     update: (id, body) => patch(`contexts/${id}`, body),
-    dashboard: (id, { force = false, period = 'all', sync = true, signal } = {}) =>
+    dashboard: (id, { force = false, period = 'all', sync = false, signal } = {}) =>
       get(`contexts/${id}/dashboard`, { force: force ? 1 : 0, period, sync: sync ? 1 : 0 }, signal),
     importJson: (id, payload, dryRun) => post(`contexts/${id}/import-json`, payload, { dryRun: dryRun ? 1 : 0 }),
   },
@@ -111,12 +111,18 @@ export const api = {
     create: body => post('teams', body),
     update: (id, body) => patch(`teams/${id}`, body),
     remove: id => del(`teams/${id}`),
-    refresh: (id, period = 'all') => post(`teams/${id}/refresh`, {}, { period }),
+    refresh: (id, period = 'all', { force = true, signal } = {}) => post(`teams/${id}/refresh`, {}, { period, force: force ? 1 : 0 }, signal),
   },
   students: {
     list: (q = '') => get('students', { q }),
     saveIdentity: body => post('students/identity', body),
     remove: id => del(`students/${id}`),
+  },
+  coaching: {
+    list: contextId => get(`contexts/${contextId}/coaching-logs`),
+    create: (contextId, body) => post(`contexts/${contextId}/coaching-logs`, body),
+    update: (id, body) => patch(`coaching-logs/${id}`, body),
+    remove: id => del(`coaching-logs/${id}`),
   },
   github: {
     rateLimit: () => get('github/rate-limit'),

@@ -9,6 +9,15 @@ import ExtLink from './ui/ExtLink.js';
 
 const FALLBACK_AVATAR = 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png';
 
+/** Badge achter de naam: rood bij verlopen afspraak, oranje bij open afspraak, grijs bij alleen logboeknotities. */
+function coachingBadge(c) {
+  if (!c) return null;
+  if (c.dueFollowUps > 0) return html`<${Pill} cls="bad" icon="alert" title=${`${c.dueFollowUps} afspraak(en) om vandaag of eerder op te volgen`}>Opvolgen<//>`;
+  if (c.openFollowUps > 0) return html`<${Pill} cls="warn" icon="note" title=${`${c.openFollowUps} openstaande afspraak(en)`}>Afspraak<//>`;
+  if (c.logCount > 0) return html`<span class="note-flag" title=${`${c.logCount} logboekregel(s)`}><${Icon} name="note" /></span>`;
+  return null;
+}
+
 export default {
   name: 'StudentRow',
   props: { member: { type: Object, required: true }, team: { type: Object, required: true } },
@@ -29,6 +38,7 @@ export default {
                   <button type="button" class="primary-name-btn" title=${`Open detailoverzicht voor ${m.displayName}`} onClick=${open}>${m.displayName}</button>
                   ${showHandles ? html`<span class="gh-handle">${m.handles.map(h => `@${h}`).join(' + ')}</span>` : null}
                   ${m.isMerged ? html`<span class="merged-badge" title=${`Samengevoegd uit ${m.handles.length} accounts`}><${Icon} name="link" />${m.handles.length}</span>` : null}
+                  ${coachingBadge(m.coaching)}
                   ${m.student?.notes ? html`<span class="note-flag" title="Heeft docentnotities"><${Icon} name="note" /></span>` : null}
                   <button type="button" class="edit-alias-btn" title=${editLabel} aria-label=${editLabel}
                     onClick=${() => openModal('identity', { teamId: t.id, handle: m.username })}><${Icon} name="edit" /></button>

@@ -63,4 +63,21 @@ final class Validate
         }
         return $body[$key];
     }
+
+    /**
+     * Datum 'YYYY-MM-DD'. Afwezig → null; expliciet null of '' → null (wissen).
+     *
+     * @param array<string, mixed> $body
+     */
+    public static function date(array $body, string $key): ?string
+    {
+        $value = $body[$key] ?? null;
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if (!is_string($value) || preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $value, $m) !== 1 || !checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+            throw new HttpException(422, "Veld '{$key}' moet de vorm YYYY-MM-DD hebben");
+        }
+        return $value;
+    }
 }

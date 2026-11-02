@@ -48,7 +48,8 @@ final class ContextController
         if ($force !== '0' && $force !== '1') {
             throw new HttpException(422, "Parameter 'force' moet 0 of 1 zijn");
         }
-        $sync = $request->query['sync'] ?? '1';
+        // Standaard alleen uit de database lezen; de frontend synct teams daarna één voor één op de achtergrond
+        $sync = $request->query['sync'] ?? ($force === '1' ? '1' : '0');
         if ($sync !== '0' && $sync !== '1') {
             throw new HttpException(422, "Parameter 'sync' moet 0 of 1 zijn");
         }
@@ -119,14 +120,7 @@ final class ContextController
             $cols['cache_ttl_minutes'] = $ttl;
         }
         if (array_key_exists('sprintStartDate', $body)) {
-            $date = $body['sprintStartDate'];
-            if ($date === null || $date === '') {
-                $cols['sprint_start_date'] = null;          // wissen
-            } elseif (is_string($date) && preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $m) === 1 && checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
-                $cols['sprint_start_date'] = $date;
-            } else {
-                throw new HttpException(422, "Veld 'sprintStartDate' moet de vorm YYYY-MM-DD hebben");
-            }
+            $cols['sprint_start_date'] = Validate::date($body, 'sprintStartDate');   // null = wissen
         }
         return $cols;
     }

@@ -24,6 +24,12 @@ final class Dates
         return (new DateTimeImmutable($value, new DateTimeZone('UTC')))->format('Y-m-d\TH:i:s\Z');
     }
 
+    /** Vandaag als 'Y-m-d' in Europe/Amsterdam (dagwisseling van de school, niet van UTC). */
+    public static function localToday(DateTimeImmutable $now): string
+    {
+        return $now->setTimezone(new DateTimeZone(self::SCHOOL_TZ))->format('Y-m-d');
+    }
+
     public const PERIODS = ['all', 'sprint', '7days', 'today'];
     private const SCHOOL_TZ = 'Europe/Amsterdam';
 

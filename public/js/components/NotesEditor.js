@@ -45,10 +45,11 @@ export default {
 
     return () => html`
       <section class="notes-editor">
-        <div class="section-title"><span><${Icon} name="note" /> Formatieve notities / afspraken</span>
+        <div class="section-title"><span><${Icon} name="note" /> Vaste achtergrondnotitie (algemeen)</span>
           ${saved.value ? html`<span class="notes-saved">Opgeslagen ✓</span>` : dirty.value ? html`<span class="msg-warn">Niet opgeslagen</span>` : null}
         </div>
-        <textarea class="textarea" rows="4" placeholder="Afspraken, observaties, vervolgstappen…" aria-label="Formatieve notities"
+        <p class="help">Blijvende context over deze student. Datum-gebonden gesprekken en afspraken staan hieronder in het logboek.</p>
+        <textarea class="textarea" rows="4" placeholder="Achtergrond, leerstijl, aandachtspunten…" aria-label="Vaste achtergrondnotitie"
           value=${notes.value} onInput=${e => { notes.value = e.target.value; }}
           onKeydown=${e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); save(); } }}></textarea>
         <div class="notes-row">

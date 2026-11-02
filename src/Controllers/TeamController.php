@@ -60,7 +60,11 @@ final class TeamController
         if (!is_string($period) || !in_array($period, Dates::PERIODS, true)) {
             throw new HttpException(422, "Parameter 'period' moet all, sprint, 7days of today zijn");
         }
-        return $this->analytics->getTeamDashboardData($request->intParam('id'), true, $period);
+        $force = $request->query['force'] ?? '1';
+        if ($force !== '0' && $force !== '1') {
+            throw new HttpException(422, "Parameter 'force' moet 0 of 1 zijn");
+        }
+        return $this->analytics->getTeamDashboardData($request->intParam('id'), $force === '1', $period);
     }
 
     /** @param array<string, mixed> $body */

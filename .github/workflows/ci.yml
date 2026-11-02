@@ -12,6 +12,17 @@ jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: glr_beroeps2_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=20
     steps:
       - uses: actions/checkout@v4
 
@@ -31,6 +42,13 @@ jobs:
           php tests/merge_test.php
           php tests/import_test.php
           php tests/sync_test.php
+          php tests/coaching_log_test.php
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: '3306'
+          DB_NAME: glr_beroeps2_test
+          DB_USER: root
+          DB_PASS: root
 
       - name: JS syntax
         run: find public/js -name '*.js' -not -path 'public/js/vendor/*' -print0 | xargs -0 -n1 node --check

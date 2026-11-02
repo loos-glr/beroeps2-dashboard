@@ -95,17 +95,23 @@ header `X-CSRF-Token`. Microsoft SSO: `AuthService::handleMicrosoftCallback()` i
 | `GET /health`, `GET /auth/me`, `POST /auth/login` (`{email?, password}`), `POST /auth/logout` | Status en sessie |
 | `GET /contexts`, `POST /contexts`, `PATCH /contexts/{id}` | Klassen (schooljaar + vak + klas), drempel, cache-TTL en `sprintStartDate` |
 | `POST /contexts/{id}/import-json?dryRun=0\|1` | POC-export (`teams` + `aliases`, v1 of v2) idempotent importeren; `dryRun=1` rolt terug |
-| `GET /contexts/{id}/dashboard?force=0\|1&period=all\|sprint\|7days\|today&sync=0\|1` | Alle teams, studenten en KPI's van een klas. `sync=0` rekent alleen uit de database (geen GitHub-calls) |
-| `POST /teams`, `PATCH /teams/{id}`, `DELETE /teams/{id}`, `POST /teams/{id}/refresh?period=` | Teams en verwachte leden |
+| `GET /contexts/{id}/dashboard?force=0\|1&period=all\|sprint\|7days\|today&sync=0\|1` | Alle teams, studenten en KPI's van een klas. Standaard `sync=0`: alleen uit de database (geen GitHub-calls); elk team heeft `needsSync`, `coaching` en per lid `coaching`. `force=1` synct synchroon |
+| `POST /teams`, `PATCH /teams/{id}`, `DELETE /teams/{id}`, `POST /teams/{id}/refresh?period=&force=0\|1` | Teams en verwachte leden |
 | `GET /students?q=`, `POST /students/identity`, `DELETE /students/{id}` | Studentnamen en gekoppelde GitHub-accounts (`handles` = volledige set) |
+| `GET\|POST /contexts/{id}/coaching-logs`, `PATCH\|DELETE /coaching-logs/{id}` | Lesronde-logboek: `teamId?`, `studentId?` of `githubIdentifier`+`fullName` (maakt/koppelt student), `noteText?`, `followUpDate?`, `resolveDue?`; antwoorden bevatten `summaries` (`visitedToday`, `openFollowUps`, `dueFollowUps`) |
 | `GET /github/rate-limit`, `GET /github/collaborator-repos?contextId=` | GitHub-status en repo-ontdekking |
 
 GitHub-token: `GITHUB_TOKEN` uit `.env`; is die leeg dan wordt de request-header `X-GitHub-Token`
 gebruikt. De GraphQL-sync **vereist een token**; zonder token tonen teams "GraphQL vereist een GitHub-token".
 
-Tests (geen DB nodig): `php tests/merge_test.php` (accounts, periode-filter, samenvoegen, statusregels),
+Tests: `php tests/merge_test.php` (accounts, periode-filter, samenvoegen, statusregels),
 `php tests/import_test.php` (parsen van het JSON-importbestand) en `php tests/sync_test.php`
-(GraphQL-parsing incl. lege repository, periodegrenzen in Europe/Amsterdam).
+(GraphQL-parsing incl. lege repository, periodegrenzen in Europe/Amsterdam) hebben geen DB nodig.
+`php tests/coaching_log_test.php` rekent `visitedToday`/`dueFollowUps` puur door en draait daarnaast tegen een echte
+MariaDB, maar alleen als `DB_NAME` op `_test` eindigt (de tabellen worden gewist en uit `sql/schema.sql` opnieuw aangemaakt).
+Lokaal: `CREATE DATABASE glr_beroeps2_test` + `GRANT` via de root-user van de db-container, daarna
+`DB_HOST=127.0.0.1 DB_PORT=3307 DB_NAME=glr_beroeps2_test DB_USER=glr_user DB_PASS=glr_secret php tests/coaching_log_test.php`.
+CI start hiervoor een MariaDB-service.
 
 ## Token instellen
 
@@ -129,11 +135,23 @@ cache-TTL (`academic_contexts.cache_ttl_minutes`) is verlopen.
 - **Periode** (`period=all|sprint|7days|today`) wordt volledig in SQL berekend; wisselen kost dus geen GitHub-calls.
   "Vandaag" en "Sprint" gebruiken de dagwisseling van Europe/Amsterdam. Commits, PR's en aangemaakte issues volgen het
   filter; assigned issues (open/closed) en de **status** (groen/oranje/rood) baseren zich altijd op alle activiteit.
-- De toolbar toont de GraphQL-limiet en hoeveel punten de laatste sync kostte. **Data verversen** (`force=1`)
-  synct alle teams opnieuw, het verversicoon op een teamkaart doet dat voor één team.
+- **Achtergrond-sync:** het dashboard laadt altijd direct uit MariaDB. Teams met `needsSync` (nooit gesynct of ouder
+  dan de cache-TTL) worden daarna door de frontend één voor één ververst (`POST /teams/{id}/refresh?force=0`); de
+  toolbar toont "Achtergrond-sync: team 2 van 6". Van klas wisselen breekt de queue af. **Ververs alles** forceert alle
+  teams van de klas op dezelfde manier, het verversicoon op een teamkaart doet dat voor één team.
+- De toolbar toont de GraphQL-limiet en hoeveel punten de syncs kostten.
 - Studentnamen en koppelingen worden bij elke dashboard-request live over de data gelegd, dus
   wijzigingen kosten geen GitHub-calls.
 - `github_http_cache` (ETag) wordt nog gebruikt voor de repo-ontdekking (`/user/repos`).
+
+## Lesronde en logboek
+
+**Lesronde / Wachtrij (X)** in de toolbar opent een geprioriteerde lijst: (1) verlopen of vandaag op te volgen
+afspraken, (2) rode studenten, (3) oranje studenten, (4) teams die vandaag nog niet zijn bezocht. *Vandaag besproken ✓*
+maakt met één klik een logregel; bij een verlopen afspraak rondt *Afspraak afgerond ✓* de oude afspraak af, zodat die
+morgen niet terugkomt. In de studentdetails staat het chronologische *Formatief Logboek & Lesafspraken* (los van de
+vaste achtergrondnotitie). "Vandaag" volgt de dagwisseling van Europe/Amsterdam; een logregel zonder opvolgdatum telt
+niet als openstaande afspraak. Een lid zonder studentrecord krijgt bij de eerste logregel automatisch een basisrecord.
 
 ## Migratie vanuit het oude dashboard
 

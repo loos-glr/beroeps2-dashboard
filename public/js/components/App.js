@@ -2,6 +2,7 @@ import { html } from '../lib/vue.js';
 import { session, bootstrap, onAuthenticated, onSignedOut } from '../store/session.js';
 import { contexts, load as loadContexts, reset as resetContexts } from '../store/contexts.js';
 import { clear as clearDashboard } from '../store/dashboard.js';
+import { reset as resetCoaching } from '../store/coaching.js';
 import { ui, closeModal, openModal } from '../store/ui.js';
 import LoginView from './LoginView.js';
 import AppHeader from './AppHeader.js';
@@ -17,7 +18,7 @@ import Icon from './ui/Icon.js';
 import Toasts from './ui/Toasts.js';
 
 onAuthenticated(loadContexts);
-onSignedOut(() => { resetContexts(); clearDashboard(); closeModal(); });
+onSignedOut(() => { resetContexts(); clearDashboard(); resetCoaching(); closeModal(); });
 
 /** Modals per type; komen binnen met 4d/4e. */
 const MODALS = { detail: StudentDetail, identity: IdentityModal, team: TeamEditModal, token: TokenModal, manage: ManageModal };

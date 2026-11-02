@@ -187,6 +187,9 @@ final class StudentIdentityService
                     if ((int) $left->fetchColumn() > 0) {
                         continue;
                     }
+                    // Logboekregels verhuizen mee (anders wist de FK-cascade ze bij het opruimen van de schil)
+                    $pdo->prepare('UPDATE coaching_logs SET student_id = :new WHERE student_id = :old')
+                        ->execute(['new' => $studentId, 'old' => $ownerId]);
                     $info = $pdo->prepare('SELECT notes, student_number FROM students WHERE id = :s');
                     $info->execute(['s' => $ownerId]);
                     $row = $info->fetch();

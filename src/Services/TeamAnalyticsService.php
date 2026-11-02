@@ -25,6 +25,7 @@ final class TeamAnalyticsService
         private readonly GitHubClientService $github,
         private readonly GitHubGraphQLService $graphql,
         private readonly Config $config,
+        private readonly ?CoachingLogService $coaching = null,
     ) {
     }
 
@@ -132,6 +133,11 @@ final class TeamAnalyticsService
         }
         $identityMap = $this->loadIdentityMap(array_map('strval', array_keys($identifiers)));
 
+        $coaching = $rows === [] || $this->coaching === null
+            ? ['teams' => [], 'students' => []]
+            : $this->coaching->summaries((int) $rows[0]['context_id'], $now);
+        $none = CoachingLogService::emptySummary();
+
         $teams = [];
         foreach ($rows as $row) {
             $id = (int) $row['id'];
@@ -149,6 +155,10 @@ final class TeamAnalyticsService
                 $snap, $identityMap, $expected[$id] ?? [], $this->config->teacherGithubUsername,
                 (int) $row['inactivity_threshold_days'], $now
             ) : [];
+            foreach ($members as &$m) {
+                $m['coaching'] = isset($m['student']['id']) ? ($coaching['students'][$m['student']['id']] ?? $none) : $none;
+            }
+            unset($m);
             $counts = ['green' => 0, 'amber' => 0, 'red' => 0];
             foreach ($members as $m) {
                 $counts[$m['status']['level']]++;
@@ -165,6 +175,8 @@ final class TeamAnalyticsService
                 'collaboratorsDetected' => (int) ($row['collaborators_detected'] ?? 0) === 1,
                 'totals' => $synced ? $snap['totals'] + ['branches' => (int) $row['branch_count']] : null,
                 'statusCounts' => $counts,
+                'needsSync' => (int) $row['is_fresh'] !== 1,
+                'coaching' => $coaching['teams'][$id] ?? $none,
                 'members' => $members,
             ];
         }

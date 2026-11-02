@@ -9,6 +9,7 @@ import Icon from './ui/Icon.js';
 import Pill from './ui/Pill.js';
 import ExtLink from './ui/ExtLink.js';
 import NotesEditor from './NotesEditor.js';
+import CoachingLog from './CoachingLog.js';
 import IdentityModal from './IdentityModal.js';
 
 const FALLBACK_AVATAR = 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png';
@@ -36,11 +37,12 @@ export default {
   setup(props, { emit }) {
     const found = computed(() => findMember(props.teamId, props.handle));
     const dirty = ref(false);
+    const logDirty = ref(false);
     const confirmClose = ref(false);
     const identityOpen = ref(false);
     watch(found, f => { if (!f.member && dashboard.loaded) emit('close'); });
 
-    const tryClose = () => (dirty.value ? (confirmClose.value = true) : emit('close'));
+    const tryClose = () => (dirty.value || logDirty.value ? (confirmClose.value = true) : emit('close'));
 
     return () => {
       const { team, member: m } = found.value;
@@ -70,6 +72,7 @@ export default {
             </div>
 
             <${NotesEditor} member=${m} onDirty=${v => { dirty.value = v; }} />
+            <${CoachingLog} team=${team} member=${m} onDirty=${v => { logDirty.value = v; }} />
 
             <div class="detail-kpis">
               <div class="detail-kpi"><span class="lbl">Commits (${periodLabel(dashboard.period)})</span><span class="val">${tot.commits}</span><span class="sub">Laatst actief: ${formatDate(m.lastActive)}</span></div>
@@ -123,7 +126,7 @@ export default {
             <button type="button" class="btn btn-primary" onClick=${tryClose}>Sluiten</button>
           </div>
           ${confirmClose.value ? html`<${ConfirmDialog} title="Niet-opgeslagen wijzigingen" confirmLabel="Sluiten zonder opslaan" danger=${true}
-            message="Je notities of studentnummer zijn nog niet opgeslagen."
+            message="Je notities, studentnummer of logboekregel zijn nog niet opgeslagen."
             onConfirm=${() => emit('close')} onCancel=${() => { confirmClose.value = false; }} />` : null}
           ${identityOpen.value ? html`<${IdentityModal} teamId=${team.id} handle=${m.username} onClose=${() => { identityOpen.value = false; }} />` : null}
         <//>`;

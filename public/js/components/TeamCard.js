@@ -1,10 +1,13 @@
 import { html } from '../lib/vue.js';
 import { dashboard, refreshTeam } from '../store/dashboard.js';
-import { ui, openModal } from '../store/ui.js';
+import { ui, openModal, toast } from '../store/ui.js';
+import { createLog } from '../store/coaching.js';
+import { periodLabel } from '../util/status.js';
 import { repoUrl } from '../util/links.js';
 import StudentRow from './StudentRow.js';
 import CacheBadge from './CacheBadge.js';
 import Icon from './ui/Icon.js';
+import Pill from './ui/Pill.js';
 import ExtLink from './ui/ExtLink.js';
 
 function HealthBar(counts, total) {
@@ -22,6 +25,9 @@ export default {
       const t = props.team;
       const busy = dashboard.loading || dashboard.refreshingIds.includes(t.id);
       const spinning = dashboard.refreshingIds.includes(t.id);
+      const visit = async () => {
+        try { await createLog({ teamId: t.id }); } catch (err) { toast(`Opslaan mislukt: ${err.message}`, 'bad'); }
+      };
       const failed = t.cacheStatus === 'error' && !t.totals;
 
       const head = html`
@@ -31,10 +37,14 @@ export default {
             onClick=${() => openModal('team', { teamId: t.id })}><${Icon} name="edit" /></button>
           <button type="button" class=${`edit-alias-btn card-refresh-btn ${spinning ? 'spin' : ''}`} title="Ververs alleen dit team"
             aria-label=${`Ververs alleen dit team (${t.repo})`} disabled=${busy} onClick=${() => refreshTeam(t.id)}><${Icon} name="refresh" /></button>
+          ${t.coaching?.visitedToday
+            ? html`<${Pill} cls="ok" icon="check">Vandaag besproken ✓<//>`
+            : html`<button type="button" class="edit-alias-btn" title="Team vandaag afvinken als besproken" aria-label=${`Team ${t.teamName} vandaag afvinken`}
+                onClick=${visit}><${Icon} name="check" /></button>`}
         </div>`;
 
       if (failed) {
-        return html`<article class="card error">${head}<p class="err"><${Icon} name="x" /><span>${t.error || 'Team kon niet worden opgehaald'}</span></p></article>`;
+        return html`<article id=${`team-${t.id}`} class="card error">${head}<p class="err"><${Icon} name="x" /><span>${t.error || 'Team kon niet worden opgehaald'}</span></p></article>`;
       }
 
       const members = ui.onlyAttention ? t.members.filter(m => m.status.level !== 'green') : t.members;
@@ -44,19 +54,21 @@ export default {
       if (t.collaboratorsDetected === false) notes.push('Alleen committers zichtbaar; er is geen token met collaborator-rechten (studenten met 0 commits ontbreken).');
 
       const url = repoUrl(t.repo);
+      const per = dashboard.period === 'all' ? '' : ` (${periodLabel(dashboard.period)})`;
       const tot = t.totals ?? {};
       return html`
-        <article class=${`card ${t.statusCounts.red ? 'has-bad' : ''}`}>
+        <article id=${`team-${t.id}`} class=${`card ${t.statusCounts.red ? 'has-bad' : ''}`}>
           <div class="card-head">
             <div>
               ${head}
               <${ExtLink} href=${url} cls="repo-link">${t.repo} <${Icon} name="ext" /><//>
               <${CacheBadge} team=${t} />
+              ${per ? html` <${Pill} cls="purple" icon="pulse">Periode: ${periodLabel(dashboard.period)}<//>` : null}
             </div>
             <div class="chips">
               <span class="chip"><b>${tot.branches ?? 0}</b>branches</span>
-              <span class="chip"><b>${tot.prs ?? 0}</b>PR's</span>
-              <span class="chip" title=${`${tot.openIssues ?? 0} open issues`}><b>${tot.issues ?? 0}</b>issues</span>
+              <span class="chip"><b>${tot.prs ?? 0}</b>PR's${per}</span>
+              <span class="chip" title=${`${tot.openIssues ?? 0} open issues`}><b>${tot.issues ?? 0}</b>issues${per}</span>
             </div>
           </div>
           ${HealthBar(t.statusCounts, t.members.length)}
@@ -64,8 +76,8 @@ export default {
           <div class="table-scroll">
             <table>
               <thead><tr>
-                <th scope="col">Student</th><th scope="col" class="num">Commits</th><th scope="col" class="num">PR's</th>
-                <th scope="col" class="num">Issues</th><th scope="col" class="num">Laatst actief</th>
+                <th scope="col">Student</th><th scope="col" class="num">Commits${per}</th><th scope="col" class="num">PR's${per}</th>
+                <th scope="col" class="num">Issues${per}</th><th scope="col" class="num">Laatst actief</th>
               </tr></thead>
               <tbody>
                 ${members.length

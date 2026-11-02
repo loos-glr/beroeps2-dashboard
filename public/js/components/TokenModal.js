@@ -1,6 +1,6 @@
 import { html, ref } from '../lib/vue.js';
 import { KEYS, read, write } from '../util/storage.js';
-import { dashboard, load } from '../store/dashboard.js';
+import { dashboard, refreshAll } from '../store/dashboard.js';
 import Modal from './ui/Modal.js';
 
 export default {
@@ -11,7 +11,7 @@ export default {
     const save = value => {
       write(KEYS.GH_TOKEN, value.trim());
       emit('close');
-      load({ force: true });
+      refreshAll();
     };
     return () => html`
       <${Modal} size="narrow" title="GitHub-token" titleId="tokenTitle" subtitle="Leesrechten volstaan. Zo zie je ook studenten met 0 commits." onClose=${() => emit('close')}>

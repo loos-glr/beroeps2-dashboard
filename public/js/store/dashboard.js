@@ -17,9 +17,11 @@ export const dashboard = reactive({
   loading: false,
   error: '',
   refreshingIds: [],  // team-id's met een lopende per-team verversing
+  queue: { running: false, done: 0, total: 0, currentName: '', failed: 0 },   // achtergrond-sync
 });
 
 let controller = null;
+let queueController = null;
 
 export const kpis = computed(() => {
   const k = { students: 0, green: 0, amber: 0, red: 0 };
@@ -32,11 +34,16 @@ export const kpis = computed(() => {
 
 export function clear() {
   controller?.abort();
-  Object.assign(dashboard, { teams: [], generatedAt: null, sync: null, periodInfo: null, github: null, loaded: false, loading: false, error: '', refreshingIds: [] });
+  queueController?.abort();
+  Object.assign(dashboard, { teams: [], generatedAt: null, sync: null, periodInfo: null, github: null, loaded: false, loading: false, error: '', refreshingIds: [],
+    queue: { running: false, done: 0, total: 0, currentName: '', failed: 0 } });
 }
 
-/** sync=false: alleen uit de database lezen, dus zonder GitHub-calls (periode wisselen, drempel wijzigen). */
-export async function load({ force = false, sync = true } = {}) {
+/**
+ * Leest het dashboard altijd direct uit de database; teams met `needsSync` worden daarna één voor één op de
+ * achtergrond ververst (startQueue). Alleen force/sync=true laat de server zelf synchroon synchroniseren.
+ */
+export async function load({ force = false, sync = false } = {}) {
   const id = contexts.selectedId;
   if (!id) return clear();
   controller?.abort();
@@ -44,11 +51,12 @@ export async function load({ force = false, sync = true } = {}) {
   dashboard.loading = true;
   dashboard.error = '';
   try {
-    const data = await api.contexts.dashboard(id, { force, sync, period: dashboard.period, signal: mine.signal });
+    const data = await api.contexts.dashboard(id, { force, sync: sync || force, period: dashboard.period, signal: mine.signal });
     if (mine.signal.aborted) return;
     Object.assign(dashboard, { teams: data.teams, generatedAt: data.generatedAt, sync: data.sync, periodInfo: data.period, github: data.github, loaded: true });
     setTeamCount(id, data.teams.length);
     if (!data.github?.graphql) loadRateLimit();
+    if (!sync && !force) startQueue(data.teams.filter(t => t.needsSync).map(t => t.id));
   } catch (err) {
     if (err.name === 'AbortError') return;
     dashboard.error = err instanceof ApiError ? err.message : 'Dashboard laden mislukt';
@@ -63,6 +71,67 @@ export async function loadRateLimit() {
     const { authMode, core, graphql } = await api.github.rateLimit();
     dashboard.github = { authMode, rateLimit: core, graphql };
   } catch { /* statusbalk toont dan "niet beschikbaar" */ }
+}
+
+/**
+ * Ververst teams sequentieel op de achtergrond (een request per team), zodat kaarten één voor één binnenstromen.
+ * Een nieuwe queue, klaswissel of clear() breekt de lopende queue af.
+ */
+export async function startQueue(ids, { force = false } = {}) {
+  queueController?.abort();
+  const contextId = contexts.selectedId;
+  const period = dashboard.period;
+  const mine = (queueController = new AbortController());
+  Object.assign(dashboard.queue, { running: ids.length > 0, done: 0, total: ids.length, currentName: '', failed: 0 });
+  if (!ids.length) return;
+  if (force) dashboard.sync = { synced: 0, fromDb: dashboard.teams.length, failed: 0, cost: 0 };
+
+  const stale = () => mine.signal.aborted || contexts.selectedId !== contextId;
+  try {
+    for (const id of ids) {
+      if (stale()) return;
+      const team = dashboard.teams.find(t => t.id === id);
+      if (!team || dashboard.refreshingIds.includes(id)) {
+        dashboard.queue.done++;
+        continue;
+      }
+      dashboard.queue.currentName = team.teamName;
+      dashboard.refreshingIds.push(id);
+      try {
+        const res = await api.teams.refresh(id, period, { force, signal: mine.signal });
+        if (stale()) return;
+        replaceTeam(res.team);
+        if (res.github) dashboard.github = res.github;
+        dashboard.generatedAt = new Date().toISOString();
+        const sync = dashboard.sync ?? { synced: 0, fromDb: 0, failed: 0, cost: 0 };
+        const ok = res.team.cacheStatus !== 'error' && res.team.cacheStatus !== 'stale-error';
+        dashboard.sync = {
+          synced: sync.synced + (ok ? 1 : 0),
+          fromDb: Math.max(0, sync.fromDb - 1),
+          failed: sync.failed + (ok ? 0 : 1),
+          cost: sync.cost + (res.sync?.cost ?? 0),
+        };
+        if (!ok) dashboard.queue.failed++;
+      } catch (err) {
+        if (err.name === 'AbortError' || stale()) return;
+        dashboard.queue.failed++;
+      } finally {
+        dashboard.refreshingIds = dashboard.refreshingIds.filter(x => x !== id);
+      }
+      dashboard.queue.done++;
+    }
+    if (dashboard.queue.failed > 0) toast(`${dashboard.queue.failed} team(s) konden niet worden ververst.`, 'warn');
+  } finally {
+    if (queueController === mine) {
+      dashboard.queue.running = false;
+      dashboard.queue.currentName = '';
+    }
+  }
+}
+
+/** "Ververs alles": forceert alle teams van de klas, een voor een. */
+export function refreshAll() {
+  return startQueue(dashboard.teams.map(t => t.id), { force: true });
 }
 
 export async function refreshTeam(teamId) {

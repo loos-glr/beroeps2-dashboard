@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Auth\AuthService;
 use App\Auth\SessionManager;
 use App\Controllers\AuthController;
+use App\Controllers\CoachingLogController;
 use App\Controllers\ContextController;
 use App\Controllers\GitHubController;
 use App\Controllers\HealthController;
@@ -13,6 +14,7 @@ use App\Controllers\TeamController;
 use App\Database\Database;
 use App\Http\Request;
 use App\Http\Router;
+use App\Services\CoachingLogService;
 use App\Services\ContextService;
 use App\Services\GitHubClientService;
 use App\Services\GitHubGraphQLService;
@@ -35,11 +37,13 @@ $health = new HealthController();
 $github = new GitHubClientService($db, $config, $request->header('X-GitHub-Token'));
 $contexts = new ContextService($db);
 $graphql = new GitHubGraphQLService($db, $github, $config);
-$analytics = new TeamAnalyticsService($db, $github, $graphql, $config);
+$coachingLogs = new CoachingLogService($db);
+$analytics = new TeamAnalyticsService($db, $github, $graphql, $config, $coachingLogs);
 $contextController = new ContextController($contexts, $analytics, new MigrationService($db));
 $teamController = new TeamController(new TeamService($db, $github), $analytics);
 $studentController = new StudentController(new StudentIdentityService($db));
 $githubController = new GitHubController($github, $db);
+$coachingController = new CoachingLogController($coachingLogs);
 
 $router = new Router($auth);
 $router->add('GET', '/health', fn () => $health->show(), public: true);
@@ -63,6 +67,11 @@ $router->add('POST', '/teams/{id}/refresh', fn (Request $r) => $teamController->
 $router->add('GET', '/students', fn (Request $r) => $studentController->index($r));
 $router->add('POST', '/students/identity', fn (Request $r) => $studentController->identity($r));
 $router->add('DELETE', '/students/{id}', fn (Request $r) => $studentController->destroy($r));
+
+$router->add('GET', '/contexts/{id}/coaching-logs', fn (Request $r) => $coachingController->index($r));
+$router->add('POST', '/contexts/{id}/coaching-logs', fn (Request $r) => $coachingController->store($r));
+$router->add('PATCH', '/coaching-logs/{id}', fn (Request $r) => $coachingController->update($r));
+$router->add('DELETE', '/coaching-logs/{id}', fn (Request $r) => $coachingController->destroy($r));
 
 $router->add('GET', '/github/rate-limit', fn () => $githubController->rateLimit());
 $router->add('GET', '/github/collaborator-repos', fn (Request $r) => $githubController->collaboratorRepos($r));
