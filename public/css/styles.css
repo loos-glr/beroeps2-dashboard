@@ -400,3 +400,25 @@ label.lbl { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 
 .handle-chip svg.i { width: 12px; height: 12px; }
 .inline-add { display: flex; gap: 8px; margin-top: 8px; }
 .chip-btn small { font-family: var(--font); color: var(--text-faint); }
+
+/* Beheer-modal */
+.tabs { display: flex; gap: 4px; padding: 0 20px; border-bottom: 1px solid var(--border); }
+.tab { border: 0; background: transparent; padding: 10px 14px; font-size: 13px; font-weight: 500; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.expected-input { margin-top: 8px; }
+.small { font-size: 11.5px; }
+.team-list.tall { max-height: 360px; }
+.discover-msg { margin-top: 8px; }
+.file-btn { cursor: pointer; }
+.file-btn:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+.legacy-hint { margin-top: 10px; margin-bottom: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.msg-ok { color: var(--ok); }
+.import-summary { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface-2); }
+.import-summary ul { margin: 0; padding-left: 18px; display: grid; gap: 2px; }
+.import-summary .group { display: flex; gap: 8px; }
+.import-list summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+.import-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 4px 0; font-size: 13px; border-bottom: 1px solid var(--border); }
+.warn-list { padding: 10px 12px; border-radius: 8px; background: var(--warn-soft); color: var(--warn); font-size: 12.5px; }
+.warn-list ul { margin: 6px 0 0; padding-left: 18px; }
+@media (max-width: 640px) { .tabs { padding: 0 12px; overflow-x: auto; } }

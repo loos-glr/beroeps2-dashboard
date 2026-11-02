@@ -11,6 +11,7 @@ import EmptyState from './EmptyState.js';
 import StudentDetail from './StudentDetail.js';
 import IdentityModal from './IdentityModal.js';
 import TeamEditModal from './TeamEditModal.js';
+import ManageModal from './manage/ManageModal.js';
 import TokenModal from './TokenModal.js';
 import Icon from './ui/Icon.js';
 import Toasts from './ui/Toasts.js';
@@ -19,12 +20,13 @@ onAuthenticated(loadContexts);
 onSignedOut(() => { resetContexts(); clearDashboard(); closeModal(); });
 
 /** Modals per type; komen binnen met 4d/4e. */
-const MODALS = { detail: StudentDetail, identity: IdentityModal, team: TeamEditModal, token: TokenModal };
+const MODALS = { detail: StudentDetail, identity: IdentityModal, team: TeamEditModal, token: TokenModal, manage: ManageModal };
 
 function Shell() {
   const Modal = ui.modal ? MODALS[ui.modal.type] : null;
   return html`
     <${AppHeader}>
+      ${contexts.selectedId ? html`<button type="button" class="btn" onClick=${() => openModal('manage')}><${Icon} name="users" />Beheer</button>` : null}
       <button type="button" class="btn" onClick=${() => openModal('token')}><${Icon} name="key" />Token</button>
     <//>
     ${contexts.loaded && contexts.list.length ? html`<${ContextBar} />` : null}

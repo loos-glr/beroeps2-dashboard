@@ -43,3 +43,17 @@ export function purgeLegacyCache() {
     stale.forEach(key => localStorage.removeItem(key));
   } catch { /* negeren */ }
 }
+
+/** POC-gegevens uit het oude (localStorage-)dashboard, of null als er niets is. */
+export function readLegacyConfig() {
+  const teams = readJson(KEYS.POC_TEAMS, []);
+  const aliases = readJson(KEYS.POC_ALIASES, {});
+  const t = Array.isArray(teams) ? teams.length : 0;
+  const a = aliases && typeof aliases === 'object' ? Object.keys(aliases).length : 0;
+  return t + a === 0 ? null : { payload: { version: 2, teams: Array.isArray(teams) ? teams : [], aliases: aliases ?? {} }, teams: t, aliases: a };
+}
+
+export function clearLegacyConfig() {
+  write(KEYS.POC_TEAMS, '');
+  write(KEYS.POC_ALIASES, '');
+}
