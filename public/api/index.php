@@ -7,6 +7,7 @@ use App\Auth\SessionManager;
 use App\Controllers\AuthController;
 use App\Controllers\CoachingLogController;
 use App\Controllers\ContextController;
+use App\Controllers\ExcludedAccountController;
 use App\Controllers\GitHubController;
 use App\Controllers\HealthController;
 use App\Controllers\StudentController;
@@ -16,6 +17,7 @@ use App\Http\Request;
 use App\Http\Router;
 use App\Services\CoachingLogService;
 use App\Services\ContextService;
+use App\Services\ExcludedAccountService;
 use App\Services\GitHubClientService;
 use App\Services\GitHubGraphQLService;
 use App\Services\MigrationService;
@@ -38,12 +40,14 @@ $github = new GitHubClientService($db, $config, $request->header('X-GitHub-Token
 $contexts = new ContextService($db);
 $graphql = new GitHubGraphQLService($db, $github, $config);
 $coachingLogs = new CoachingLogService($db);
-$analytics = new TeamAnalyticsService($db, $github, $graphql, $config, $coachingLogs);
+$excluded = new ExcludedAccountService($db, $config);
+$analytics = new TeamAnalyticsService($db, $github, $graphql, $config, $coachingLogs, $excluded);
 $contextController = new ContextController($contexts, $analytics, new MigrationService($db));
 $teamController = new TeamController(new TeamService($db, $github), $analytics);
 $studentController = new StudentController(new StudentIdentityService($db));
 $githubController = new GitHubController($github, $db);
 $coachingController = new CoachingLogController($coachingLogs);
+$excludedController = new ExcludedAccountController($excluded);
 
 $router = new Router($auth);
 $router->add('GET', '/health', fn () => $health->show(), public: true);
@@ -72,6 +76,9 @@ $router->add('GET', '/contexts/{id}/coaching-logs', fn (Request $r) => $coaching
 $router->add('POST', '/contexts/{id}/coaching-logs', fn (Request $r) => $coachingController->store($r));
 $router->add('PATCH', '/coaching-logs/{id}', fn (Request $r) => $coachingController->update($r));
 $router->add('DELETE', '/coaching-logs/{id}', fn (Request $r) => $coachingController->destroy($r));
+
+$router->add('GET', '/excluded-accounts', fn () => $excludedController->index());
+$router->add('PUT', '/excluded-accounts', fn (Request $r) => $excludedController->update($r));
 
 $router->add('GET', '/github/rate-limit', fn () => $githubController->rateLimit());
 $router->add('GET', '/github/collaborator-repos', fn (Request $r) => $githubController->collaboratorRepos($r));

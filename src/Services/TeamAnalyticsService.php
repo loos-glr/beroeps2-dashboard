@@ -26,6 +26,7 @@ final class TeamAnalyticsService
         private readonly GitHubGraphQLService $graphql,
         private readonly Config $config,
         private readonly ?CoachingLogService $coaching = null,
+        private readonly ?ExcludedAccountService $excluded = null,
     ) {
     }
 
@@ -138,6 +139,7 @@ final class TeamAnalyticsService
             : $this->coaching->summaries((int) $rows[0]['context_id'], $now);
         $none = CoachingLogService::emptySummary();
 
+        $excludedAccounts = $this->excludedAccounts();
         $teams = [];
         foreach ($rows as $row) {
             $id = (int) $row['id'];
@@ -152,7 +154,7 @@ final class TeamAnalyticsService
             };
 
             $members = $synced ? self::enrichAndMergeStudents(
-                $snap, $identityMap, $expected[$id] ?? [], $this->config->teacherGithubUsername,
+                $snap, $identityMap, $expected[$id] ?? [], $excludedAccounts,
                 (int) $row['inactivity_threshold_days'], $now
             ) : [];
             foreach ($members as &$m) {
@@ -314,12 +316,18 @@ final class TeamAnalyticsService
             }
         }
 
-        $teacher = $this->config->teacherGithubUsername;
+        $teacher = $this->excludedAccounts();
         $result = [];
         foreach ($out as $id => $d) {
             $result[$id] = self::buildAccounts($d['agg'], $d['recent'], $d['prs'], $d['issues'], $d['collabs'], $teacher, $from);
         }
         return $result;
+    }
+
+    /** @return list<string> */
+    private function excludedAccounts(): array
+    {
+        return $this->excluded?->identifiers() ?? $this->config->excludedGithubAccounts;
     }
 
     /* ===== Identiteiten ===== */
@@ -399,17 +407,18 @@ final class TeamAnalyticsService
         array $prs,
         array $issues,
         array $collabs,
-        string $teacher,
+        array $teacher,
         ?DateTimeImmutable $from = null,
     ): array {
         $fromStr = $from?->format('Y-m-d H:i:s');
         $inPeriod = static fn (?string $at): bool => $fromStr === null || ($at !== null && $at >= $fromStr);
         $iso = static fn (?string $v): ?string => Dates::fromDb($v);
 
+        $skip = array_flip($teacher);
         $accounts = [];
-        $get = static function (string $ident, ?string $avatar) use (&$accounts, $teacher): ?string {
+        $get = static function (string $ident, ?string $avatar) use (&$accounts, $skip): ?string {
             $key = GitHubIdentifier::normalize($ident);
-            if ($key === '' || ($teacher !== '' && $key === $teacher) || GitHubIdentifier::isBot($key)) {
+            if ($key === '' || isset($skip[$key]) || GitHubIdentifier::isBot($key)) {
                 return null;
             }
             $accounts[$key] ??= [
@@ -584,7 +593,7 @@ final class TeamAnalyticsService
         array $snapshot,
         array $identityMap,
         array $expected,
-        string $teacher,
+        array $teacher,
         int $thresholdDays,
         DateTimeImmutable $now,
     ): array {
@@ -609,10 +618,11 @@ final class TeamAnalyticsService
             }
         }
 
+        $skip = array_flip($teacher);
         $groups = [];
         foreach ($accounts as $id => $acc) {
             $id = (string) $id;      // numerieke logins worden door PHP integer-sleutels
-            if (($teacher !== '' && $id === $teacher) || GitHubIdentifier::isBot($id)) {
+            if (isset($skip[$id]) || GitHubIdentifier::isBot($id)) {
                 continue;
             }
             $ident = $identityMap[$id] ?? null;

@@ -108,7 +108,7 @@ $snap = [
     ],
     'collaborators' => [], 'issues' => [],
 ];
-$members = T::enrichAndMergeStudents($snap, $identityMap, $poc['teams'][0]['expected'] + ['semdevries99'], 'teacher', 7, new DateTimeImmutable('2026-11-10T12:00:00Z'));
+$members = T::enrichAndMergeStudents($snap, $identityMap, $poc['teams'][0]['expected'] + ['semdevries99'], ['teacher'], 7, new DateTimeImmutable('2026-11-10T12:00:00Z'));
 $merged = array_values(array_filter($members, static fn ($m) => $m['displayName'] === 'Sem de Vries'));
 check('één student voor beide accounts', count($merged), 1);
 check('isMerged (via expected)', [$merged[0]['isMerged'], $merged[0]['handles']], [true, ['sem-glr', 'semdevries99']]);

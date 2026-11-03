@@ -91,6 +91,7 @@ export async function request(path, { method = 'GET', body, query, signal } = {}
 const get = (path, query, signal) => request(path, { query, signal });
 const post = (path, body, query, signal) => request(path, { method: 'POST', body: body ?? {}, query, signal });
 const patch = (path, body) => request(path, { method: 'PATCH', body });
+const put = (path, body) => request(path, { method: 'PUT', body });
 const del = path => request(path, { method: 'DELETE' });
 
 export const api = {
@@ -124,6 +125,10 @@ export const api = {
     create: (contextId, body) => post(`contexts/${contextId}/coaching-logs`, body),
     update: (id, body) => patch(`coaching-logs/${id}`, body),
     remove: id => del(`coaching-logs/${id}`),
+  },
+  excludedAccounts: {
+    list: () => get('excluded-accounts'),
+    save: identifiers => put('excluded-accounts', { identifiers }),
   },
   github: {
     rateLimit: () => get('github/rate-limit'),

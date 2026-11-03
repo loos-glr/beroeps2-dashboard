@@ -57,7 +57,7 @@ $repo = [
     ]],
     'collaborators' => ['nodes' => [['login' => 'Alice-GLR', 'avatarUrl' => 'https://av/alice']]],
 ];
-$p = G::parseRepository($repo, 'teacher');
+$p = G::parseRepository($repo);
 check('branchCount + pushedAt', [$p['branchCount'], $p['pushedAt']], [3, '2026-11-09 10:00:00']);
 check('commit: login lowercase, datum naar UTC', [$p['commits'][0]['author'], $p['commits'][0]['committed_at']], ['alice-glr', '2026-11-09 10:30:00']);
 check('commit: avatar van user', $p['commits'][0]['avatar'], 'https://av/alice');
@@ -80,11 +80,11 @@ $empty = G::parseRepository([
     'pullRequests' => ['pageInfo' => ['hasNextPage' => false, 'endCursor' => null], 'nodes' => []],
     'issues' => ['pageInfo' => ['hasNextPage' => false, 'endCursor' => null], 'nodes' => []],
     'collaborators' => ['nodes' => [['login' => 'Nieuw', 'avatarUrl' => null]]],
-], 'teacher');
+]);
 check('geen commits, geen fout', [$empty['commits'], $empty['pageInfo']['commits']['hasNextPage']], [[], false]);
 check('collaborators blijven bewaard', array_column($empty['collaborators'], 'login'), ['nieuw']);
 check('pushedAt null', $empty['pushedAt'], null);
-$noTarget = G::parseRepository(['defaultBranchRef' => ['target' => null]], '');
+$noTarget = G::parseRepository(['defaultBranchRef' => ['target' => null]]);
 check('target null / alles ontbreekt', [$noTarget['commits'], $noTarget['prs'], $noTarget['issues'], $noTarget['collaborators'], $noTarget['branchCount']], [[], [], [], [], 0]);
 
 echo "Dates::periodStart\n";

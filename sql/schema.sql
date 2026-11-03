@@ -166,6 +166,13 @@ CREATE TABLE IF NOT EXISTS repo_collaborators (
   CONSTRAINT fk_rcol_team FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- GitHub-accounts die nooit als student meetellen (docenten, tweede accounts); globaal
+CREATE TABLE IF NOT EXISTS excluded_github_accounts (
+  identifier VARCHAR(191) NOT NULL,                   -- lowercase, zonder @
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (identifier)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Bezoek-wachtrij en logboek (Stap 6), nog zonder docent-identificatie
 CREATE TABLE IF NOT EXISTS coaching_logs (
   id             INT UNSIGNED NOT NULL AUTO_INCREMENT,

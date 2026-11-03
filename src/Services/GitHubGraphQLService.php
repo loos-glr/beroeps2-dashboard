@@ -156,7 +156,7 @@ GQL;
             $data = $first;
             $cost += (int) ($data['data']['rateLimit']['cost'] ?? 0);
             $collabDenied = self::collaboratorsDenied($data);
-            $parsed = self::parseRepository((array) ($data['data']['repository'] ?? []), $this->config->teacherGithubUsername);
+            $parsed = self::parseRepository((array) ($data['data']['repository'] ?? []));
             $lastSynced = $plan['team']['last_synced_at'] ?? null;
 
             // Vervolgpagina's: history zolang hasNextPage; PR's/issues zolang er wijzigingen sinds de vorige sync zijn
@@ -183,7 +183,7 @@ GQL;
                     throw $next;
                 }
                 $cost += (int) ($next['data']['rateLimit']['cost'] ?? 0);
-                $extra = self::parseRepository((array) ($next['data']['repository'] ?? []), $this->config->teacherGithubUsername);
+                $extra = self::parseRepository((array) ($next['data']['repository'] ?? []));
                 foreach (['commits', 'prs', 'issues'] as $k) {
                     if ($more[$k]) {
                         $parsed[$k] = array_merge($parsed[$k], $extra[$k]);
@@ -363,7 +363,7 @@ GQL;
      *   pageInfo: array{commits: array<string, mixed>, prs: array<string, mixed>, issues: array<string, mixed>}
      * }
      */
-    public static function parseRepository(array $repo, string $teacher): array
+    public static function parseRepository(array $repo): array
     {
         $none = ['hasNextPage' => false, 'endCursor' => null];
         $page = static fn (mixed $p): array => is_array($p)

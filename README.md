@@ -96,7 +96,7 @@ php -S localhost:8000 -t public dev/router.php
 ## Backend & Plesk-installatie
 
 1. Domein op **PHP 8.3** zetten; document root → `httpdocs/public`, repo in `httpdocs`.
-2. MariaDB-database + gebruiker aanmaken en `sql/schema.sql` importeren (phpMyAdmin). Bestaande installatie? Importeer `sql/migration_step5.sql`.
+2. MariaDB-database + gebruiker aanmaken en `sql/schema.sql` importeren (phpMyAdmin). Bestaande installatie? Importeer `sql/migration_step5.sql` en `sql/migration_excluded_accounts.sql`.
 3. `.env.example` kopiëren naar `.env` (buiten de document root) en invullen:
    DB-gegevens, `GITHUB_TOKEN`, `TEACHER_GITHUB_USERNAME`, `APP_SHARED_PASSWORD`.
 4. Eerste docent (optioneel): `php bin/hash-password.php` en de INSERT uit `schema.sql` gebruiken.
@@ -121,6 +121,7 @@ header `X-CSRF-Token`. Microsoft SSO: `AuthService::handleMicrosoftCallback()` i
 | `POST /teams`, `PATCH /teams/{id}`, `DELETE /teams/{id}`, `POST /teams/{id}/refresh?period=&force=0\|1` | Teams en verwachte leden |
 | `GET /students?q=`, `POST /students/identity`, `DELETE /students/{id}` | Studentnamen en gekoppelde GitHub-accounts (`handles` = volledige set) |
 | `GET\|POST /contexts/{id}/coaching-logs`, `PATCH\|DELETE /coaching-logs/{id}` | Lesronde-logboek: `teamId?`, `studentId?` of `githubIdentifier`+`fullName` (maakt/koppelt student), `noteText?`, `followUpDate?`, `resolveDue?`; antwoorden bevatten `summaries` (`visitedToday`, `openFollowUps`, `dueFollowUps`) |
+| `GET /excluded-accounts`, `PUT /excluded-accounts` (`{identifiers}` = volledige set) | Uitgesloten GitHub-accounts (docenten); `.env`-accounts komen terug met `source: env` en zijn niet te wijzigen |
 | `GET /github/rate-limit`, `GET /github/collaborator-repos?contextId=` | GitHub-status en repo-ontdekking |
 
 GitHub-token: `GITHUB_TOKEN` uit `.env`; is die leeg dan wordt de request-header `X-GitHub-Token`
@@ -140,7 +141,8 @@ CI start hiervoor een MariaDB-service.
 Voorkeur: `GITHUB_TOKEN` in `.env` (fine-grained PAT met alleen leesrechten op de teamrepo's).
 Heeft de server geen eigen token, dan kan een docent via **Token** in het dashboard een persoonlijk
 fallback-token instellen; dat blijft in `localStorage` van die browser en gaat als `X-GitHub-Token`
-naar de eigen server. Publieke repo's werken ook anoniem, maar dan ontbreken studenten met 0 commits.
+naar de eigen server. Onder **Token** beheer je ook de **uitgesloten GitHub-accounts** (docent, tweede account, collega's): meerdere
+namen tegelijk, direct effect zonder nieuwe sync. `TEACHER_GITHUB_USERNAME` (kommagescheiden) blijft werken als vaste basislijst. Publieke repo's werken ook anoniem, maar dan ontbreken studenten met 0 commits.
 
 ## Synchronisatie en periode-filter
 

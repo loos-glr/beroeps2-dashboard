@@ -72,7 +72,7 @@ $aggNone = array_map(static fn (array $r) => ['in_period' => 0] + $r, $aggRows);
 $collabs = [['login' => 'alice', 'avatar_url' => null], ['login' => 'bob', 'avatar_url' => null], ['login' => 'teacher', 'avatar_url' => null]];
 
 echo "buildAccounts\n";
-$snap = T::buildAccounts($aggAll, $recent, $prs, $issues, $collabs, 'teacher');
+$snap = T::buildAccounts($aggAll, $recent, $prs, $issues, $collabs, ['teacher']);
 check('docent en bots gefilterd', array_keys($snap['accounts']), ['alice', 'bob', 'alice-glr', 'git naam']);
 check('team-totalen (alleen studenten)', $snap['totals'], ['commits' => 7, 'prs' => 2, 'prsMerged' => 1, 'issues' => 2, 'openIssues' => 1, 'issuesClosed' => 1, 'issuesClosedInPeriod' => 1]);
 check('labels als namen', $snap['issues'][1]['labels'], ['bug', 'feature']);
@@ -84,20 +84,20 @@ check('lastActive = max over commits/PR/issue', $snap['accounts']['alice']['last
 check('collaborator zonder bijdrage is zichtbaar', [$snap['accounts']['bob']['commitCountAll'], $snap['collaborators']], [0, ['alice', 'bob']]);
 
 $from = new DateTimeImmutable('2026-11-08T00:00:00Z');
-$f = T::buildAccounts($aggRows, $recent, $prs, $issues, $collabs, 'teacher', $from);
+$f = T::buildAccounts($aggRows, $recent, $prs, $issues, $collabs, ['teacher'], $from);
 check('periode: commits volgen filter', [$f['accounts']['alice']['commitCount'], $f['accounts']['alice']['commitCountAll']], [2, 5]);
 check('periode: recente commits gefilterd, laatste niet', [count($f['accounts']['alice']['commits']), $f['accounts']['alice']['latestCommit']['sha']], [1, 'aaa1111']);
 check('periode: PR\'s gefilterd op created_at', [count($f['accounts']['alice']['prs']), $f['accounts']['alice']['prCountAll']], [0, 1]);
 check('periode: aangemaakte issues gefilterd', [$f['accounts']['bob']['createdIssues'], $f['accounts']['bob']['createdIssuesAll']], [[], 1]);
 check('periode: assigned altijd actueel', $f['accounts']['alice']['assignedIssues'], [1, 2]);
 check('periode: teamtotalen', $f['totals'], ['commits' => 3, 'prs' => 1, 'prsMerged' => 0, 'issues' => 0, 'openIssues' => 1, 'issuesClosed' => 1, 'issuesClosedInPeriod' => 0]);
-$wide = T::buildAccounts($aggRows, $recent, $prs, $issues, $collabs, 'teacher', new DateTimeImmutable('2026-11-01T00:00:00Z'));
+$wide = T::buildAccounts($aggRows, $recent, $prs, $issues, $collabs, ['teacher'], new DateTimeImmutable('2026-11-01T00:00:00Z'));
 check('periode: gesloten issues binnen bereik', [$wide['totals']['issuesClosed'], $wide['totals']['issuesClosedInPeriod'], $wide['totals']['prsMerged']], [1, 1, 1]);
 
 echo "enrichAndMergeStudents\n";
 $byName = static fn (array $members, string $name) => array_values(array_filter($members, static fn ($m) => $m['displayName'] === $name))[0] ?? null;
 
-$plain = T::enrichAndMergeStudents($snap, [], ['ghost'], 'teacher', 7, $now);
+$plain = T::enrichAndMergeStudents($snap, [], ['ghost'], ['teacher'], 7, $now);
 check('zonder koppeling: alle accounts apart', count($plain), 5);        // alice, bob, alice-glr, git naam, ghost
 check('verwacht lid zonder activiteit is rood', $byName($plain, 'ghost')['status']['reason'], 'no_code');
 check('verwacht lid is isExpectedOnly', $byName($plain, 'ghost')['isExpectedOnly'], true);
@@ -105,7 +105,7 @@ check('sortering: minste commits eerst', $plain[0]['totals']['commits'], 0);
 
 $ident = ['studentId' => 12, 'fullName' => 'Alice de Vries', 'studentNumber' => '123', 'notes' => 'n', 'linkedHandles' => ['alice', 'alice-glr']];
 $map = ['alice' => $ident, 'alice-glr' => $ident];
-$merged = T::enrichAndMergeStudents($snap, $map, [], 'teacher', 7, $now);
+$merged = T::enrichAndMergeStudents($snap, $map, [], ['teacher'], 7, $now);
 $a = $byName($merged, 'Alice de Vries');
 check('samengevoegd: één lid', count(array_filter($merged, static fn ($m) => $m['key'] === 's:12')), 1);
 check('isMerged', $a['isMerged'], true);
@@ -123,22 +123,22 @@ check('status green', $a['status']['level'], 'green');
 check('naam uit DB, linkedHandles', [$a['student']['id'], $a['linkedHandles']], [12, ['alice', 'alice-glr']]);
 
 // Periode-filter verandert de aantallen, maar niet de status
-$fm = $byName(T::enrichAndMergeStudents($f, $map, [], 'teacher', 7, $now), 'Alice de Vries');
+$fm = $byName(T::enrichAndMergeStudents($f, $map, [], ['teacher'], 7, $now), 'Alice de Vries');
 check('filter: periode-commits', $fm['totals']['commits'], 3);
 check('filter: all-time totalen blijven', $fm['totalsAll'], ['commits' => 6, 'prsCreated' => 2, 'issuesCreated' => 1]);
 check('filter: status blijft op alle activiteit', $fm['status']['level'], 'green');
 check('filter: assigned onveranderd', $fm['totals']['issuesAssigned'], 2);
-$none = T::buildAccounts($aggNone, $recent, $prs, $issues, $collabs, 'teacher', new DateTimeImmutable('2026-11-10T00:00:00Z'));
-$nm = $byName(T::enrichAndMergeStudents($none, $map, [], 'teacher', 7, $now), 'Alice de Vries');
+$none = T::buildAccounts($aggNone, $recent, $prs, $issues, $collabs, ['teacher'], new DateTimeImmutable('2026-11-10T00:00:00Z'));
+$nm = $byName(T::enrichAndMergeStudents($none, $map, [], ['teacher'], 7, $now), 'Alice de Vries');
 check('vandaag zonder commits is niet rood', [$nm['totals']['commits'], $nm['status']['level']], [0, 'green']);
 
 // Numerieke GitHub-logins worden integer-arraysleutels; dat mag niets breken
-$numeric = T::buildAccounts([$agg('192524447', 2, 2, '2026-11-09 10:00:00')], [], [], [], [], 'teacher');
-$nm2 = T::enrichAndMergeStudents($numeric, [], [], 'teacher', 7, $now);
+$numeric = T::buildAccounts([$agg('192524447', 2, 2, '2026-11-09 10:00:00')], [], [], [], [], ['teacher']);
+$nm2 = T::enrichAndMergeStudents($numeric, [], [], ['teacher'], 7, $now);
 check('numerieke login', [$nm2[0]['username'], $nm2[0]['totals']['commits']], ['192524447', 2]);
 
 // Live docentfilter, ook als die in de data zit
-$live = T::enrichAndMergeStudents($snap, [], [], 'bob', 7, $now);
+$live = T::enrichAndMergeStudents($snap, [], [], ['bob'], 7, $now);
 check('live docentfilter', $byName($live, 'bob'), null);
 
 echo "evaluateStatus\n";
@@ -149,6 +149,13 @@ check('drempel + 1 = rood', T::evaluateStatus($t(3, 1), 8, 7), ['level' => 'red'
 check('>2 commits zonder PR = amber', T::evaluateStatus($t(3, 0), 0, 7)['level'], 'amber');
 check('2 commits zonder PR = green', T::evaluateStatus($t(2, 0), 0, 7)['level'], 'green');
 check('alleen PR telt als bijdrage', T::evaluateStatus($t(0, 1), 0, 7)['level'], 'green');
+
+echo "meerdere uitgesloten accounts\n";
+$multi = T::buildAccounts($aggAll, $recent, $prs, $issues, $collabs, ['teacher', 'alice']);
+check('beide accounts uit accounts', isset($multi['accounts']['teacher']) || isset($multi['accounts']['alice']), false);
+check('uitgesloten collaborator valt weg', in_array('alice', $multi['collaborators'], true), false);
+$mm = T::enrichAndMergeStudents($snap, [], ['alice'], ['teacher', 'alice'], 7, $now);
+check('uitgesloten verwacht lid valt weg', $byName($mm, 'alice'), null);
 
 echo "GitHubIdentifier\n";
 check('normalize', GitHubIdentifier::normalize('  @Alice-GLR '), 'alice-glr');
