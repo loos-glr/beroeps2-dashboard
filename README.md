@@ -61,6 +61,9 @@ docker compose up -d --build
 | phpMyAdmin | http://localhost:8081 | automatisch ingelogd met de app-gebruiker |
 | MariaDB | `localhost:3307` | root-wachtwoord `root_secret`; data in volume `db_data` |
 
+De vendor-bestanden (`public/js/vendor/`) staan in git; er is geen installatiestap. Controle:
+`docker compose exec -T app php bin/vendor.php --verify`.
+
 Poort bezet? Zet `APP_PORT` / `PMA_PORT` in `.env` of de shell.
 `sql/schema.sql` wordt bij de eerste start automatisch geladen. Opnieuw beginnen: `docker compose down -v`.
 Bestaand volume bijwerken: `docker compose exec -T db mariadb -uroot -proot_secret glr_beroeps2 < sql/migration_step5.sql`.
@@ -84,7 +87,12 @@ php -S localhost:8000 -t public dev/router.php
    DB-gegevens, `GITHUB_TOKEN`, `TEACHER_GITHUB_USERNAME`, `APP_SHARED_PASSWORD`.
 4. Eerste docent (optioneel): `php bin/hash-password.php` en de INSERT uit `schema.sql` gebruiken.
    Zonder docent kan ingelogd worden met het gedeelde wachtwoord (laat e-mail leeg).
-5. Alleen nginx (zonder Apache)? Voeg toe aan de extra nginx-directives:
+5. Vendor-bestanden (`public/js/vendor/`: Vue en htm) staan in git en komen mee met de deploy.
+   - *Plesk → Git*: optioneel bij **Additional deployment actions**: `/opt/plesk/php/8.3/bin/php bin/vendor.php --verify`
+     (laat de deploy zichtbaar falen als iets ontbreekt of afwijkt).
+   - *Upload via File Manager/FTP*: kopieer `public/` inclusief `public/js/vendor/` en `bin/`.
+   - Ontbreken ze toch: Plesk SSH-terminal, `cd httpdocs && /opt/plesk/php/8.3/bin/php bin/vendor.php --install`.
+6. Alleen nginx (zonder Apache)? Voeg toe aan de extra nginx-directives:
    `location /api/ { try_files $uri /api/index.php$is_args$args; }`
 
 API (JSON). Niet-publieke routes vereisen een sessie en, bij POST/PATCH/PUT/DELETE, de
@@ -164,5 +172,5 @@ van het oude dashboard kan via **Beheer → Import & Export**. Daar staat ook **
 
 Deploy gaat via Plesk (zie *Backend & Plesk-installatie*); de frontend heeft geen buildstap, dus
 het kopiëren van `public/` volstaat. GitHub Actions (`.github/workflows/ci.yml`) draait op elke push/PR:
-`php -l`, de PHP-tests, `node --check` en een guard tegen `innerHTML`, `eval` en inline styles.
+`php -l`, de PHP-tests, `node --check`, `bin/vendor.php --verify` (sha256 van de vendor-bestanden) en een guard tegen `innerHTML`, `eval` en inline styles.
 GitHub Pages wordt niet meer gebruikt: de frontend werkt niet zonder de PHP-API.

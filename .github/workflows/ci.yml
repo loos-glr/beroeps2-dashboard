@@ -58,4 +58,4 @@ jobs:
           if grep -rnE 'innerHTML|outerHTML|v-html|eval\(|new Function|style="' public/js --include='*.js' --exclude-dir=vendor; then
             echo "Verboden patroon in frontend (zie hierboven)"; exit 1
           fi
-          test "$(grep -c 'new Function' public/js/vendor/vue.runtime.esm-browser.prod.js)" = "0"
+          php bin/vendor.php --verify

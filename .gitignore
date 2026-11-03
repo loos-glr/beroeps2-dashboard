@@ -1,4 +1,4 @@
 _site/
 .playwright-cli/
 .env
-vendor/
+/vendor/
