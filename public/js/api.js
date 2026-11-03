@@ -111,7 +111,8 @@ export const api = {
     create: body => post('teams', body),
     update: (id, body) => patch(`teams/${id}`, body),
     remove: id => del(`teams/${id}`),
-    refresh: (id, period = 'all', { force = true, signal } = {}) => post(`teams/${id}/refresh`, {}, { period, force: force ? 1 : 0 }, signal),
+    refresh: (id, period = 'all', { force = true, collaborators, signal } = {}) =>
+      post(`teams/${id}/refresh`, {}, { period, force: force ? 1 : 0, ...(collaborators === undefined ? {} : { collaborators: collaborators ? 1 : 0 }) }, signal),
   },
   students: {
     list: (q = '') => get('students', { q }),

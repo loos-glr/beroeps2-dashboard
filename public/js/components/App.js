@@ -1,13 +1,14 @@
 import { html } from '../lib/vue.js';
 import { session, bootstrap, onAuthenticated, onSignedOut } from '../store/session.js';
 import { contexts, load as loadContexts, reset as resetContexts } from '../store/contexts.js';
-import { clear as clearDashboard } from '../store/dashboard.js';
+import { dashboard, clear as clearDashboard } from '../store/dashboard.js';
 import { reset as resetCoaching } from '../store/coaching.js';
-import { ui, closeModal, openModal } from '../store/ui.js';
+import { ui, closeModal, openModal, enterBoard, exitBoard } from '../store/ui.js';
 import LoginView from './LoginView.js';
 import AppHeader from './AppHeader.js';
 import ContextBar from './ContextBar.js';
 import DashboardView from './DashboardView.js';
+import ClassBoardView from './ClassBoardView.js';
 import EmptyState from './EmptyState.js';
 import StudentDetail from './StudentDetail.js';
 import IdentityModal from './IdentityModal.js';
@@ -18,15 +19,17 @@ import Icon from './ui/Icon.js';
 import Toasts from './ui/Toasts.js';
 
 onAuthenticated(loadContexts);
-onSignedOut(() => { resetContexts(); clearDashboard(); resetCoaching(); closeModal(); });
+onSignedOut(() => { resetContexts(); clearDashboard(); resetCoaching(); closeModal(); exitBoard(); });
 
 /** Modals per type; komen binnen met 4d/4e. */
 const MODALS = { detail: StudentDetail, identity: IdentityModal, team: TeamEditModal, token: TokenModal, manage: ManageModal };
 
 function Shell() {
+  if (ui.board && contexts.selectedId) return html`<${ClassBoardView} />`;
   const Modal = ui.modal ? MODALS[ui.modal.type] : null;
   return html`
     <${AppHeader}>
+      ${contexts.selectedId ? html`<button type="button" class="btn btn-primary" disabled=${!dashboard.teams.length} onClick=${enterBoard}><${Icon} name="screen" />Digibord-modus</button>` : null}
       ${contexts.selectedId ? html`<button type="button" class="btn" onClick=${() => openModal('manage')}><${Icon} name="users" />Beheer</button>` : null}
       <button type="button" class="btn" onClick=${() => openModal('token')}><${Icon} name="key" />Token</button>
     <//>

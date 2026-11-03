@@ -64,7 +64,7 @@ $recent = [
 $prs = [$pr(4, 'alice', 'MERGED', '2026-11-03 10:00:00', '2026-11-04 09:00:00'), $pr(5, 'alice-glr', 'OPEN', '2026-11-08 10:00:00')];
 $issues = [
     $issue(1, 'OPEN', 'alice', ['alice', 'alice-glr']),                 // aan beide accounts toegewezen
-    $issue(2, 'CLOSED', 'bob', ['alice'], '2026-11-02 10:00:00'),
+    ['closed_at' => '2026-11-03 10:00:00'] + $issue(2, 'CLOSED', 'bob', ['alice'], '2026-11-02 10:00:00'),
 ];
 // Zonder periode-filter geeft SQL in_period = total; "vandaag" zonder commits geeft in_period = 0
 $aggAll = array_map(static fn (array $r) => ['in_period' => $r['total']] + $r, $aggRows);
@@ -74,7 +74,7 @@ $collabs = [['login' => 'alice', 'avatar_url' => null], ['login' => 'bob', 'avat
 echo "buildAccounts\n";
 $snap = T::buildAccounts($aggAll, $recent, $prs, $issues, $collabs, 'teacher');
 check('docent en bots gefilterd', array_keys($snap['accounts']), ['alice', 'bob', 'alice-glr', 'git naam']);
-check('team-totalen (alleen studenten)', $snap['totals'], ['commits' => 7, 'prs' => 2, 'issues' => 2, 'openIssues' => 1]);
+check('team-totalen (alleen studenten)', $snap['totals'], ['commits' => 7, 'prs' => 2, 'prsMerged' => 1, 'issues' => 2, 'openIssues' => 1, 'issuesClosed' => 1, 'issuesClosedInPeriod' => 1]);
 check('labels als namen', $snap['issues'][1]['labels'], ['bug', 'feature']);
 check('state lowercase + merged', $snap['accounts']['alice']['prs'][0]['state'], 'merged');
 check('git-naam herkend', [$snap['accounts']['git naam']['isGitName'], $snap['accounts']['alice']['isGitName']], [true, false]);
@@ -90,7 +90,9 @@ check('periode: recente commits gefilterd, laatste niet', [count($f['accounts'][
 check('periode: PR\'s gefilterd op created_at', [count($f['accounts']['alice']['prs']), $f['accounts']['alice']['prCountAll']], [0, 1]);
 check('periode: aangemaakte issues gefilterd', [$f['accounts']['bob']['createdIssues'], $f['accounts']['bob']['createdIssuesAll']], [[], 1]);
 check('periode: assigned altijd actueel', $f['accounts']['alice']['assignedIssues'], [1, 2]);
-check('periode: teamtotalen', $f['totals'], ['commits' => 3, 'prs' => 1, 'issues' => 0, 'openIssues' => 1]);
+check('periode: teamtotalen', $f['totals'], ['commits' => 3, 'prs' => 1, 'prsMerged' => 0, 'issues' => 0, 'openIssues' => 1, 'issuesClosed' => 1, 'issuesClosedInPeriod' => 0]);
+$wide = T::buildAccounts($aggRows, $recent, $prs, $issues, $collabs, 'teacher', new DateTimeImmutable('2026-11-01T00:00:00Z'));
+check('periode: gesloten issues binnen bereik', [$wide['totals']['issuesClosed'], $wide['totals']['issuesClosedInPeriod'], $wide['totals']['prsMerged']], [1, 1, 1]);
 
 echo "enrichAndMergeStudents\n";
 $byName = static fn (array $members, string $name) => array_values(array_filter($members, static fn ($m) => $m['displayName'] === $name))[0] ?? null;

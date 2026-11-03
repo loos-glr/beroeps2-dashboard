@@ -34,7 +34,8 @@ bin/ dev/         CLI-hulpscript (wachtwoordhash) en router voor `php -S`
 | `api.js` | API-client: cookies, `X-CSRF-Token`, optioneel `X-GitHub-Token`, centrale 401 |
 | `store/` | `session` (login), `contexts` (schooljaar/vak/klas), `dashboard` (teams, KPI's), `ui` (toasts, modal) |
 | `util/` | Datums, statusmapping, veilige GitHub-links, localStorage, download |
-| `components/` | `App`, `LoginView`, `ContextBar`, `DashboardView`, `TeamCard`, `StudentRow`, `StudentDetail`, modals, `manage/*` |
+| `components/` | `App`, `LoginView`, `ContextBar`, `DashboardView`, `TeamCard`, `StudentRow`, `StudentDetail`, modals, `manage/*`, `ClassBoardView` + `board/*` (digibord) |
+| `store/board.js` | Digibord: voorkeuren, streefdoelen, `teamStats()`, klassommen en de auto-refresh-hartslag |
 
 Conventies (voor wie React kent):
 
@@ -45,6 +46,19 @@ Conventies (voor wie React kent):
 - **Nooit** `innerHTML`/`v-html` of inline `style="…"`: de CSP (`script-src 'self'`, geen `unsafe-eval`) staat dat niet toe
   en CI controleert het. Dynamische breedtes lopen via `style=${{ width }}` (CSSOM).
 - Externe links gaan via `ExtLink` (alleen `https://github.com/`).
+
+## Digibord / klas-modus
+
+De knop **Digibord-modus** (topbar; URL-hash `#digibord`) toont een projecteerbare klasweergave: klasdoelen
+(commits, PR's, afgeronde issues) en grote teamtegels met voortgang en de laatste commit. Terug via
+*Docentweergave*, `Esc` of de terugknop van de browser; *Volledig scherm* gebruikt de Fullscreen API.
+
+- **Privacy:** in deze modus worden wachtrij, statusbadges, notities, logboeken, detail- en beheermodals niet gerenderd, en
+  `openModal()` doet niets. Studentweergave: *Alleen teams* of *Teams + leden* (voornamen, alleen een groene ring voor actieve leden).
+- **Streefdoelen** staan per klas en periode in `localStorage` (`glr_b2_board_goals`); standaard is `aantal teams × factor`.
+- **Auto-verversen** (Uit / 3 / 5 min, standaard 3): een hartslag van 30 s ververst teams die ouder zijn dan het interval via
+  `POST /teams/{id}/refresh?force=1&collaborators=0`. Collaborators worden dan alleen opnieuw opgehaald als ze nog nooit of langer dan
+  24 uur geleden zijn gesynct. In een verborgen tabblad of onder 250 GraphQL-punten wordt niet ververst.
 
 ## Lokaal draaien (Docker Compose)
 

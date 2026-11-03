@@ -77,7 +77,7 @@ export async function loadRateLimit() {
  * Ververst teams sequentieel op de achtergrond (een request per team), zodat kaarten één voor één binnenstromen.
  * Een nieuwe queue, klaswissel of clear() breekt de lopende queue af.
  */
-export async function startQueue(ids, { force = false } = {}) {
+export async function startQueue(ids, { force = false, collaborators } = {}) {
   queueController?.abort();
   const contextId = contexts.selectedId;
   const period = dashboard.period;
@@ -98,7 +98,7 @@ export async function startQueue(ids, { force = false } = {}) {
       dashboard.queue.currentName = team.teamName;
       dashboard.refreshingIds.push(id);
       try {
-        const res = await api.teams.refresh(id, period, { force, signal: mine.signal });
+        const res = await api.teams.refresh(id, period, { force, collaborators, signal: mine.signal });
         if (stale()) return;
         replaceTeam(res.team);
         if (res.github) dashboard.github = res.github;
@@ -177,10 +177,10 @@ export function applyStudentUpdate(student) {
 }
 
 /** Periode wisselen: alleen herberekenen uit de database, dit kost geen GitHub-calls. */
-export function setPeriod(key) {
+export function setPeriod(key, { remember = true } = {}) {
   if (dashboard.period === key) return;
   dashboard.period = key;
-  write(KEYS.PERIOD, key);
+  if (remember) write(KEYS.PERIOD, key);
   load({ sync: false });
 }
 

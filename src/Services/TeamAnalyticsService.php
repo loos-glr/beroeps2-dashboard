@@ -32,13 +32,13 @@ final class TeamAnalyticsService
     /* ===== Publieke API ===== */
 
     /** @return array{team: array<string, mixed>, github: array<string, mixed>, sync: array<string, int>, period: array<string, mixed>} */
-    public function getTeamDashboardData(int $teamId, bool $forceRefresh = true, string $period = 'all'): array
+    public function getTeamDashboardData(int $teamId, bool $forceRefresh = true, string $period = 'all', ?bool $forceCollaborators = null): array
     {
         $rows = $this->loadTeamRows('t.id = :id', ['id' => $teamId]);
         if ($rows === []) {
             throw new HttpException(404, 'Team niet gevonden');
         }
-        $run = $this->run($rows, $forceRefresh, true, $period);
+        $run = $this->run($rows, $forceRefresh, true, $period, $forceCollaborators ?? $forceRefresh);
         return ['team' => $run['teams'][0], 'github' => $run['github'], 'sync' => $run['sync'], 'period' => $run['period']];
     }
 
@@ -47,7 +47,7 @@ final class TeamAnalyticsService
     {
         $context = (new ContextService($this->db))->find($contextId);
         $rows = $this->loadTeamRows('t.context_id = :id', ['id' => $contextId]);
-        $run = $this->run($rows, $forceRefresh, $sync, $period);
+        $run = $this->run($rows, $forceRefresh, $sync, $period, $forceRefresh);
 
         $kpis = ['teams' => count($run['teams']), 'students' => 0, 'green' => 0, 'amber' => 0, 'red' => 0,
             'commits' => 0, 'prs' => 0, 'openIssues' => 0];
@@ -100,7 +100,7 @@ final class TeamAnalyticsService
      * @param list<array<string, mixed>> $rows
      * @return array{teams: list<array<string, mixed>>, github: array<string, mixed>, sync: array<string, int>, period: array<string, mixed>}
      */
-    private function run(array $rows, bool $force, bool $sync, string $period): array
+    private function run(array $rows, bool $force, bool $sync, string $period, bool $forceCollaborators): array
     {
         $now = Dates::now();
         $errors = [];
@@ -110,7 +110,7 @@ final class TeamAnalyticsService
         if ($sync && $rows !== []) {
             $stale = array_values(array_filter($rows, static fn (array $r) => $force || (int) $r['is_fresh'] !== 1));
             if ($stale !== []) {
-                [$syncedIds, $errors, $cost] = $this->refresh($stale, $force);
+                [$syncedIds, $errors, $cost] = $this->refresh($stale, $force, $forceCollaborators);
                 $ids = implode(',', array_map(static fn ($r) => (int) $r['id'], $rows));
                 $rows = $this->loadTeamRows("t.id IN ({$ids})", []);
             }
@@ -210,7 +210,7 @@ final class TeamAnalyticsService
      * @param list<array<string, mixed>> $stale
      * @return array{0: list<int>, 1: array<int, string>, 2: int} [gesyncte ids, fouten per team, totale kosten]
      */
-    private function refresh(array $stale, bool $force): array
+    private function refresh(array $stale, bool $force, bool $forceCollaborators): array
     {
         $pdo = ($this->db)();
         $locks = [];
@@ -240,7 +240,7 @@ final class TeamAnalyticsService
             $synced = [];
             $errors = [];
             $cost = 0;
-            foreach ($this->graphql->syncTeams($todo, $force) as $id => $res) {
+            foreach ($this->graphql->syncTeams($todo, $forceCollaborators) as $id => $res) {
                 $cost += $res['cost'];
                 if ($res['ok']) {
                     $synced[] = $id;
@@ -473,6 +473,7 @@ final class TeamAnalyticsService
         }
 
         $prTotal = 0;
+        $prMerged = 0;
         foreach ($prs as $pr) {
             $key = $get((string) $pr['author_identifier'], $pr['author_avatar'] ?? null);
             if ($key === null) {
@@ -484,6 +485,9 @@ final class TeamAnalyticsService
                 continue;
             }
             $prTotal++;
+            if (strtoupper((string) $pr['state']) === 'MERGED') {
+                $prMerged++;
+            }
             $accounts[$key]['prs'][] = [
                 'number' => (int) $pr['pr_number'],
                 'title' => (string) $pr['title'],
@@ -501,6 +505,8 @@ final class TeamAnalyticsService
         $issueMap = [];
         $issueCreated = 0;
         $issueOpen = 0;
+        $issueClosed = 0;
+        $issueClosedInPeriod = 0;
         foreach ($issues as $i) {
             $n = (int) $i['issue_number'];
             $labels = json_decode((string) ($i['labels_json'] ?? '[]'), true);
@@ -520,6 +526,11 @@ final class TeamAnalyticsService
             ];
             if (strtoupper((string) $i['state']) === 'OPEN') {
                 $issueOpen++;
+            } else {
+                $issueClosed++;
+                if ($fromStr === null || (($i['closed_at'] ?? null) !== null && $i['closed_at'] >= $fromStr)) {
+                    $issueClosedInPeriod++;
+                }
             }
             $key = $get((string) $i['author_identifier'], $i['author_avatar'] ?? null);
             if ($key !== null) {
@@ -548,8 +559,13 @@ final class TeamAnalyticsService
             'accounts' => $accounts,
             'issues' => $issueMap,
             'collaborators' => array_values(array_unique($collaborators)),
-            // Teamtotalen tellen alleen studenten (docent en bots uitgesloten); openIssues is altijd actueel
-            'totals' => ['commits' => $commitTotal, 'prs' => $prTotal, 'issues' => $issueCreated, 'openIssues' => $issueOpen],
+            // Commits/PR's/aangemaakte issues tellen alleen studenten (docent en bots uitgesloten). openIssues en
+            // issuesClosed zijn altijd actueel en tellen alle issues (ook de backlog van de docent).
+            'totals' => [
+                'commits' => $commitTotal, 'prs' => $prTotal, 'prsMerged' => $prMerged,
+                'issues' => $issueCreated, 'openIssues' => $issueOpen,
+                'issuesClosed' => $issueClosed, 'issuesClosedInPeriod' => $issueClosedInPeriod,
+            ],
         ];
     }
 

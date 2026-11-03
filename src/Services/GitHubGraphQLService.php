@@ -84,7 +84,7 @@ GQL;
      * @param list<array<string, mixed>> $teams rijen uit teams (id, repo_full_name, last_synced_at, collaborators_synced_at)
      * @return array<int, array{ok: bool, error: ?string, cost: int}>
      */
-    public function syncTeams(array $teams, bool $force): array
+    public function syncTeams(array $teams, bool $forceCollaborators): array
     {
         $results = [];
         if ($teams === []) {
@@ -99,7 +99,7 @@ GQL;
 
         $plans = [];
         foreach ($teams as $t) {
-            $plans[(int) $t['id']] = $this->plan($t, $force);
+            $plans[(int) $t['id']] = $this->plan($t, $forceCollaborators);
         }
 
         // Ronde 1 parallel; vervolgpagina's (alleen bij uitzondering) per team daarna
@@ -114,7 +114,7 @@ GQL;
      * @param array<string, mixed> $team
      * @return array{vars: array<string, mixed>, team: array<string, mixed>, collabs: bool}
      */
-    private function plan(array $team, bool $force): array
+    private function plan(array $team, bool $forceCollaborators): array
     {
         [$owner, $name] = explode('/', (string) $team['repo_full_name'], 2) + [1 => ''];
 
@@ -127,7 +127,7 @@ GQL;
         }
 
         $syncedAt = $team['collaborators_synced_at'] ?? null;
-        $collabs = $force || $syncedAt === null
+        $collabs = $forceCollaborators || $syncedAt === null
             || strtotime((string) $syncedAt . ' UTC') < time() - self::COLLABORATOR_TTL_HOURS * 3600;
 
         return [

@@ -64,7 +64,11 @@ final class TeamController
         if ($force !== '0' && $force !== '1') {
             throw new HttpException(422, "Parameter 'force' moet 0 of 1 zijn");
         }
-        return $this->analytics->getTeamDashboardData($request->intParam('id'), $force === '1', $period);
+        $collabs = $request->query['collaborators'] ?? null;
+        if ($collabs !== null && $collabs !== '0' && $collabs !== '1') {
+            throw new HttpException(422, "Parameter 'collaborators' moet 0 of 1 zijn");
+        }
+        return $this->analytics->getTeamDashboardData($request->intParam('id'), $force === '1', $period, $collabs === null ? null : $collabs === '1');
     }
 
     /** @param array<string, mixed> $body */

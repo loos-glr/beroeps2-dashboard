@@ -5,6 +5,10 @@ export const KEYS = {
   CONTEXT_ID: 'glr_b2_context_id',
   ONLY_ATTENTION: 'glr_b2_only_attention',
   PERIOD: 'glr_b2_period',
+  BOARD_MEMBERS: 'glr_b2_board_members',
+  BOARD_REFRESH: 'glr_b2_board_refresh',
+  BOARD_PERIOD: 'glr_b2_board_period',
+  BOARD_GOALS: 'glr_b2_board_goals',
   POC_TEAMS: 'glr_beroeps2_teams_v1',
   POC_ALIASES: 'glr_beroeps2_student_aliases_v1',
 };

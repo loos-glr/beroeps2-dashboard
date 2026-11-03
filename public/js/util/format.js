@@ -28,6 +28,19 @@ export function formatAge(dateString) {
   return `${Math.floor(minutes / 60)} u geleden`;
 }
 
+/** Relatieve tijd voor het digibord; `now` (ms) komt van een ref zodat de tekst meebeweegt met de klok. */
+export function formatRelative(dateString, now = Date.now()) {
+  if (!dateString) return '';
+  const then = new Date(dateString);
+  const minutes = Math.floor((now - then.getTime()) / 60000);
+  if (minutes < 1) return 'zojuist';
+  if (minutes < 60) return `${minutes} min geleden`;
+  const midnight = d => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((midnight(new Date(now)) - midnight(then)) / 86400000);
+  if (days <= 0) return `${Math.floor(minutes / 60)} u geleden`;
+  return days === 1 ? 'gisteren' : `${days} dagen geleden`;
+}
+
 /** Huidig schooljaar: vanaf augustus start het nieuwe jaar. */
 export function currentSchoolYear(now = new Date()) {
   const y = now.getFullYear();
