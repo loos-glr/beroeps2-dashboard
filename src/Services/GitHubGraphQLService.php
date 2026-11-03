@@ -282,7 +282,6 @@ GQL;
                 'Authorization: Bearer ' . $this->github->token(),
             ],
             CURLOPT_ENCODING => '',
-            CURLOPT_PROTOCOLS_STR => 'https',
             CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_TIMEOUT => 30,
             CURLOPT_HEADERFUNCTION => static function ($ch, string $line) use (&$sink): int {
@@ -294,7 +293,7 @@ GQL;
                 }
                 return strlen($line);
             },
-        ]);
+        ] + GitHubClientService::httpsOnlyCurlOptions());
         $handle['ch'] = $ch;
         return $handle;
     }

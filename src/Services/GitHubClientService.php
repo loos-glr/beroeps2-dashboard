@@ -256,6 +256,19 @@ final class GitHubClientService
             ->execute(['p' => $like]);
     }
 
+    /**
+     * Beperkt curl (ook bij redirects) tot https, zodat het token nergens anders heen kan.
+     * CURLOPT_*_STR bestaat pas vanaf libcurl 7.85; Plesk-builds linken vaak een oudere libcurl.
+     *
+     * @return array<int, mixed>
+     */
+    public static function httpsOnlyCurlOptions(): array
+    {
+        return defined('CURLOPT_PROTOCOLS_STR')
+            ? [CURLOPT_PROTOCOLS_STR => 'https', CURLOPT_REDIR_PROTOCOLS_STR => 'https']
+            : [CURLOPT_PROTOCOLS => CURLPROTO_HTTPS, CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS];
+    }
+
     /* ===== Intern ===== */
 
     /** @return array{etag: ?string, response_json: string}|null */
@@ -290,8 +303,6 @@ final class GitHubClientService
             CURLOPT_ENCODING => '',
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_MAXREDIRS => 3,
-            CURLOPT_PROTOCOLS_STR => 'https',
-            CURLOPT_REDIR_PROTOCOLS_STR => 'https',
             CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_TIMEOUT => 20,
             CURLOPT_HEADERFUNCTION => static function ($ch, string $line) use (&$sink): int {
@@ -303,7 +314,7 @@ final class GitHubClientService
                 }
                 return strlen($line);
             },
-        ]);
+        ] + self::httpsOnlyCurlOptions());
         return $ch;
     }
 

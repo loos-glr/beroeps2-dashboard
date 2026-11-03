@@ -18,6 +18,7 @@ final class HealthController
         } catch (Throwable) {
             $db = 'error';
         }
-        return ['status' => 'ok', 'php' => PHP_VERSION, 'db' => $db];
+        $curl = extension_loaded('curl') ? (string) curl_version()['version'] : 'missing';
+        return ['status' => 'ok', 'php' => PHP_VERSION, 'db' => $db, 'curl' => $curl];
     }
 }
